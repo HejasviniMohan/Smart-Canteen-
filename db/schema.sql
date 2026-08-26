@@ -44,6 +44,8 @@ CREATE TABLE food_items (
     name            VARCHAR(120)  NOT NULL,
     description     VARCHAR(500),
     price           NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+    special_price   NUMERIC(10,2),
+    is_today_special BOOLEAN      NOT NULL DEFAULT FALSE,
     availability    BOOLEAN       NOT NULL DEFAULT TRUE,
     image_url       VARCHAR(500),
     prep_time_min   INT           NOT NULL DEFAULT 10,
@@ -136,23 +138,60 @@ INSERT INTO users (name, email, password, phone, role) VALUES
 INSERT INTO categories (name, description, display_order) VALUES
 ('South Indian', 'Idli, Dosa, Vada and more', 1),
 ('North Indian', 'Curries, Roti, Paratha', 2),
-('Snacks',       'Samosa, Sandwich, Pakora', 3),
-('Beverages',    'Tea, Coffee, Juice', 4),
-('Desserts',     'Sweet treats and ice cream', 5);
+('Chinese',      'Fried rice, Noodles, Manchurian', 3),
+('Snacks',       'Samosa, Sandwich, Pakora', 4),
+('Beverages',    'Tea, Coffee, Juice', 5),
+('Desserts',     'Sweet treats and ice cream', 6),
+('Combos',       'Value meal combos', 7),
+('Healthy',      'Salads, Soups, Grilled', 8);
 
-INSERT INTO food_items (category_id, name, description, price, availability, prep_time_min, is_veg) VALUES
-(1, 'Masala Dosa',     'Crispy dosa with potato masala',     80.00, TRUE, 12, TRUE),
-(1, 'Idli Sambar',     'Soft idlis with sambar & chutney',   50.00, TRUE, 8,  TRUE),
-(1, 'Medu Vada',       'Crispy vadas with chutney',          60.00, TRUE, 10, TRUE),
-(2, 'Paneer Butter Masala', 'Creamy paneer curry with roti', 150.00, TRUE, 15, TRUE),
-(2, 'Veg Biryani',     'Aromatic rice with vegetables',      130.00, TRUE, 18, TRUE),
-(2, 'Aloo Paratha',    'Stuffed potato paratha',             70.00, TRUE, 10, TRUE),
-(3, 'Samosa',          'Crispy pastry with potato filling',   20.00, TRUE, 5,  TRUE),
-(3, 'Veg Sandwich',    'Grilled sandwich with veggies',      60.00, TRUE, 7,  TRUE),
-(3, 'Pakora Plate',    'Assorted vegetable pakoras',         50.00, TRUE, 8,  TRUE),
-(4, 'Masala Chai',     'Indian spiced tea',                  15.00, TRUE, 3,  TRUE),
-(4, 'Filter Coffee',   'South Indian filter coffee',         25.00, TRUE, 4,  TRUE),
-(4, 'Fresh Lime Soda', 'Refreshing lime soda',               35.00, TRUE, 3,  TRUE),
-(5, 'Gulab Jamun',     'Soft milk-solid dumplings in syrup',  40.00, TRUE, 3,  TRUE),
-(5, 'Ice Cream',       'Vanilla / Chocolate / Strawberry',    50.00, TRUE, 2,  TRUE),
-(5, 'Brownie',         'Warm chocolate brownie',             70.00, TRUE, 5,  TRUE);
+INSERT INTO food_items (category_id, name, description, price, special_price, is_today_special, availability, prep_time_min, is_veg) VALUES
+-- South Indian
+(1, 'Masala Dosa',     'Crispy dosa with potato masala & chutney',  80.00, 65.00, TRUE,  TRUE, 12, TRUE),
+(1, 'Idli Sambar',     'Soft steamed idlis with sambar & chutney', 50.00, NULL, FALSE, TRUE, 8,  TRUE),
+(1, 'Medu Vada',       'Crispy golden vadas with chutney & sambar',  55.00, NULL, FALSE, TRUE, 10, TRUE),
+(1, 'Rava Dosa',        'Crispy semolina dosa with onions & spices',  70.00, NULL, FALSE, TRUE, 12, TRUE),
+(1, 'Uttapam',          'Thick pancake topped with onions & tomatoes', 60.00, NULL, FALSE, TRUE, 10, TRUE),
+-- North Indian
+(2, 'Paneer Butter Masala', 'Creamy tomato gravy with soft paneer cubes', 150.00, 120.00, TRUE, TRUE, 15, TRUE),
+(2, 'Veg Biryani',      'Aromatic basmati rice with mixed vegetables', 130.00, 105.00, TRUE, TRUE, 18, TRUE),
+(2, 'Aloo Paratha',    'Stuffed potato flatbread with butter',       70.00, NULL, FALSE, TRUE, 10, TRUE),
+(2, 'Dal Makhani',      'Rich creamy black lentils slow-cooked overnight', 120.00, NULL, FALSE, TRUE, 15, TRUE),
+(2, 'Chole Bhature',   'Spiced chickpeas with deep-fried bread',    90.00, NULL, FALSE, TRUE, 12, TRUE),
+(2, 'North Indian Thali','Complete meal with roti, dal, sabzi, rice & dessert', 180.00, 150.00, FALSE, TRUE, 20, TRUE),
+-- Chinese
+(3, 'Veg Fried Rice',   'Wok-tossed rice with vegetables & soy',  100.00, 80.00, TRUE, TRUE, 12, TRUE),
+(3, 'Paneer Fried Rice','Fried rice with chunky paneer pieces',   120.00, NULL, FALSE, TRUE, 14, TRUE),
+(3, 'Veg Manchurian',  'Crispy veg balls in spicy Indo-Chinese sauce', 110.00, NULL, FALSE, TRUE, 15, TRUE),
+(3, 'Hakka Noodles',   'Stir-fried noodles with vegetables',        100.00, NULL, FALSE, TRUE, 12, TRUE),
+(3, 'Schezwan Fried Rice','Spicy fried rice with schezwan sauce',  110.00, NULL, FALSE, TRUE, 12, TRUE),
+-- Snacks
+(4, 'Samosa',          'Crispy triangular pastry with spiced potato filling', 20.00, 15.00, TRUE, TRUE, 5, TRUE),
+(4, 'Veg Sandwich',    'Grilled sandwich with fresh vegetables & cheese', 60.00, NULL, FALSE, TRUE, 7, TRUE),
+(4, 'Pakora Plate',    'Assorted vegetable fritters with mint chutney', 50.00, NULL, FALSE, TRUE, 8, TRUE),
+(4, 'Aloo Tikki',      'Golden potato patties with chutneys',          30.00, NULL, FALSE, TRUE, 6, TRUE),
+(4, 'Paneer Tikka',   'Marinated paneer cubes grilled to perfection',  80.00, NULL, FALSE, TRUE, 12, TRUE),
+-- Beverages
+(5, 'Masala Chai',     'Strong Indian tea brewed with spices & milk',  15.00, 10.00, TRUE, TRUE, 3, TRUE),
+(5, 'Filter Coffee',   'Strong South Indian filter coffee',            25.00, 20.00, TRUE, FALSE, 4, TRUE),
+(5, 'Fresh Lime Soda', 'Refreshing lime with soda and chat masala',   35.00, NULL, FALSE, TRUE, 3, TRUE),
+(5, 'Cold Coffee',    'Chilled creamy coffee with ice cream',        60.00, NULL, FALSE, TRUE, 4, TRUE),
+(5, 'Mango Lassi',    'Thick creamy mango yogurt smoothie',           50.00, NULL, FALSE, TRUE, 3, TRUE),
+-- Desserts
+(6, 'Gulab Jamun',    'Soft milk dumplings in rose-flavored syrup',  40.00, 30.00, TRUE, TRUE, 3, TRUE),
+(6, 'Ice Cream',      'Creamy ice cream - Vanilla, Chocolate or Strawberry', 50.00, NULL, FALSE, TRUE, 2, TRUE),
+(6, 'Brownie',         'Warm chocolate brownie with nuts',             70.00, NULL, FALSE, TRUE, 5, TRUE),
+(6, 'Rasgulla',        'Spongy white cheese balls in light sugar syrup', 35.00, NULL, FALSE, TRUE, 3, TRUE),
+(6, 'Cheesecake',      'Creamy baked cheesecake with berry topping',   90.00, NULL, FALSE, TRUE, 5, TRUE),
+-- Combos (in-person only - not available online)
+(7, 'South Indian Combo', 'Masala Dosa + Idli + Filter Coffee',    140.00, NULL, FALSE, TRUE, 15, TRUE),
+(7, 'North Indian Combo', 'Aloo Paratha + Dal Makhani + Chai',      160.00, NULL, FALSE, TRUE, 15, TRUE),
+(7, 'Chinese Combo',      'Fried Rice + Manchurian + Coke',          170.00, NULL, FALSE, TRUE, 15, TRUE),
+(7, 'Street Food Combo',  'Samosa + Sandwich + Cold Coffee',         120.00, NULL, FALSE, TRUE, 10, TRUE),
+(7, 'Student Meal',       'Veg Biryani + Gulab Jamun + Water',     160.00, NULL, FALSE, TRUE, 18, TRUE),
+-- Healthy
+(8, 'Greek Salad',    'Fresh cucumbers, tomatoes, feta & olives',    90.00, NULL, FALSE, TRUE, 5, TRUE),
+(8, 'Oats Upma',      'Healthy oats cooked with vegetables',          70.00, NULL, FALSE, TRUE, 10, TRUE),
+(8, 'Grilled Paneer Salad','Fresh salad with grilled paneer cubes',   110.00, NULL, FALSE, TRUE, 10, TRUE),
+(8, 'Veg Soup',       'Hot & healthy mixed vegetable soup',           50.00, NULL, FALSE, TRUE, 5, TRUE),
+(8, 'Fruit Bowl',     'Fresh seasonal fruits',                       80.00, NULL, FALSE, TRUE, 3, TRUE);

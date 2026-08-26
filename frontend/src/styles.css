@@ -438,6 +438,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', 'Inter', sans-serif; letter-spa
 .sc-food-qty button:hover { background: var(--brand-50); }
 .sc-food-qty span { padding: 0 8px; font-weight: 700; font-size: 0.88rem; color: var(--brand); min-width: 24px; text-align: center; }
 .sc-food-sold-badge { background: #94a3b8; color: #fff; font-size: 0.75rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; }
+.sc-food-inperson-badge { background: #7c3aed; color: #fff; font-size: 0.75rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; }
 .sc-food-prep { font-size: 0.75rem; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 3px; }
 
 /* ============= Checkout Page ============= */

@@ -2,15 +2,22 @@ import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import { toast } from 'react-toastify'
 
+const COMBO_CATEGORY = 'Combos'
+
 export default function FoodCard({ food, showCategory = true }) {
   const { items, add, updateQty } = useCart()
   const cartItem = items.find((i) => i.id === food.id)
   const qty = cartItem?.quantity || 0
   const unavailable = !food.availability
+  const isCombo = food.categoryName === COMBO_CATEGORY
   const [imgError, setImgError] = useState(false)
 
   const handleAdd = () => {
     if (unavailable) return
+    if (isCombo) {
+      toast.error('Combos must be ordered in-person at the canteen')
+      return
+    }
     add(food, 1)
     toast.success(`${food.name} added to cart`)
   }
@@ -36,6 +43,7 @@ export default function FoodCard({ food, showCategory = true }) {
         )}
         <span className="sc-food-rating">⭐ {Number(rating).toFixed(1)}</span>
         {unavailable && <div className="sc-food-soldout">Sold Out</div>}
+        {isCombo && <div className="sc-food-soldout">In-Person Only</div>}
       </div>
 
       <div className="sc-food-body">
@@ -53,6 +61,8 @@ export default function FoodCard({ food, showCategory = true }) {
           </div>
           {unavailable ? (
             <span className="sc-food-sold-badge">Sold out</span>
+          ) : isCombo ? (
+            <span className="sc-food-sold-badge">In-Person</span>
           ) : qty > 0 ? (
             <div className="sc-food-qty">
               <button onClick={() => updateQty(food.id, qty - 1)}>−</button>

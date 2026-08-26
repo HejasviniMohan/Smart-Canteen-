@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: smart-canteen-backend
+    env: java
+    region: singapore
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/smart-canteen-backend-1.0.0.jar --spring.profiles.active=prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION_MS
+        value: 86400000
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        # Replace with your Vercel frontend URL after deployment
+        # e.g. https://smart-canteen.vercel.app
+        value: https://smart-canteen-git-main-hejasvinimohans-projects.vercel.app
