@@ -1,0 +1,25 @@
+target/
+.idea/
+.vscode/
+*.iml
+*.log
+.env
+.env.local
+.env.*
+.DS_Store
+node_modules/
+dist/
+build/
+out/
+classes/
+HELP.md
+.mvn/
+mvnw
+mvnw.cmd
+.gradle/
+*.class
+package-lock.json
+
+# Sensitive local files
+backend/app.err
+backend/pgpass.txt
