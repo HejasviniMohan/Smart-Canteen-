@@ -1,37 +1,27 @@
 package com.canteen.util;
 
-import com.canteen.repository.OrderRepository;
-import jakarta.annotation.PostConstruct;
+import com.canteen.repository.DailyTokenCounterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.LocalDate;
 
+/** Produces counter tokens that restart each day: A001..A100, B001..B100, and so on. */
 @Component
 @RequiredArgsConstructor
 public class TokenGenerator {
 
-    private final OrderRepository orderRepo;
-    private static final String[] PREFIXES = {"A", "B", "C", "D", "E"};
-    private final AtomicLong counter = new AtomicLong(0);
+    private static final int BLOCK_SIZE = 100;
 
-    @PostConstruct
-    public void init() {
-        orderRepo.findTopByOrderByIdDesc()
-                .ifPresent(order -> {
-                    String tn = order.getTokenNumber();
-                    if (tn != null && tn.length() > 1) {
-                        try {
-                            long num = Long.parseLong(tn.substring(1));
-                            counter.set(num);
-                        } catch (NumberFormatException ignored) {}
-                    }
-                });
+    private final DailyTokenCounterRepository counters;
+
+    public String nextToken(LocalDate businessDate) {
+        return format(counters.next(businessDate));
     }
 
-    public synchronized String nextToken() {
-        long count = counter.incrementAndGet();
-        String prefix = PREFIXES[(int) ((count - 1) / 100) % PREFIXES.length];
-        return prefix + count;
+    static String format(int number) {
+        int zeroBased = number - 1;
+        char letter = (char) ('A' + (zeroBased / BLOCK_SIZE) % 26);
+        return String.format("%c%03d", letter, zeroBased % BLOCK_SIZE + 1);
     }
 }

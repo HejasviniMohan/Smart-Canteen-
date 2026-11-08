@@ -29,6 +29,12 @@ public class Payment {
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus;
 
+    @Column(nullable = false, length = 20)
+    private String gateway;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
     @Column(name = "transaction_id", length = 120)
     private String transactionId;
 
@@ -49,7 +55,7 @@ public class Payment {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) this.createdAt = LocalDateTime.now();
         if (this.paymentStatus == null) this.paymentStatus = PaymentStatus.PENDING;
     }
 }

@@ -1,5 +1,8 @@
 package com.canteen.dto;
 
+import com.canteen.entity.OrderStatus;
+import com.canteen.entity.PaymentMethod;
+import com.canteen.entity.PaymentStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -8,18 +11,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.canteen.entity.OrderStatus;
-import com.canteen.entity.PaymentStatus;
-
 public class OrderDtos {
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class PlaceOrderRequest {
-        @NotEmpty @Valid
+        @NotEmpty @Size(max = 50) @Valid
         private List<OrderItemRequest> items;
         @Size(max = 500)
         private String notes;
-        private String paymentMethod;
+        @NotNull
+        private PaymentMethod paymentMethod;
+        @NotNull
+        private LocalDateTime pickupSlot;
+        /** The total the student was shown. If prices have changed the order is refused. */
+        private BigDecimal expectedTotal;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -55,10 +60,26 @@ public class OrderDtos {
         private BigDecimal totalAmount;
         private OrderStatus status;
         private PaymentStatus paymentStatus;
+        private PaymentMethod paymentMethod;
         private String tokenNumber;
+        private LocalDateTime pickupSlot;
+        /** Signed QR payload. Only ever sent to the order's owner. */
+        private String pickupCode;
         private String notes;
         private LocalDateTime orderDate;
         private LocalDateTime updatedAt;
+        private LocalDateTime collectedAt;
+        private LocalDateTime paymentDeadline;
         private List<OrderItemResponse> items;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class PickupLookupRequest {
+        /** Scanned QR payload. */
+        @Size(max = 300)
+        private String code;
+        /** Manual fallback when the camera cannot be used. */
+        @Size(max = 20)
+        private String token;
     }
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +33,35 @@ public class Order {
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus;
 
-    @Column(name = "token_number", nullable = false, unique = true, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 20)
+    private PaymentMethod paymentMethod;
+
+    /** Short human-readable number for the counter. Unique per business date only. */
+    @Column(name = "token_number", nullable = false, length = 20)
     private String tokenNumber;
+
+    @Column(name = "business_date", nullable = false)
+    private LocalDate businessDate;
+
+    @Column(name = "pickup_slot", nullable = false)
+    private LocalDateTime pickupSlot;
+
+    /** Random value signed into the QR code, so codes cannot be derived from the order id. */
+    @Column(name = "pickup_nonce", nullable = false, length = 40)
+    private String pickupNonce;
+
+    @Column(name = "idempotency_key", length = 80)
+    private String idempotencyKey;
+
+    @Column(name = "collected_at")
+    private LocalDateTime collectedAt;
+
+    @Column(name = "collected_by", length = 150)
+    private String collectedBy;
+
+    @Version
+    private Long version;
 
     @Column(length = 500)
     private String notes;
@@ -51,8 +79,8 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
-        this.orderDate = now;
-        this.updatedAt = now;
+        if (this.orderDate == null) this.orderDate = now;
+        if (this.updatedAt == null) this.updatedAt = now;
         if (this.status == null) this.status = OrderStatus.PLACED;
         if (this.paymentStatus == null) this.paymentStatus = PaymentStatus.PENDING;
     }

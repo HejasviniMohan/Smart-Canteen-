@@ -1,10 +1,12 @@
 package com.canteen.service;
 
+import com.canteen.dto.PageResponse;
 import com.canteen.dto.ReviewDtos;
 import com.canteen.entity.*;
 import com.canteen.exception.ApiException;
 import com.canteen.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,12 @@ public class ReviewService {
         FoodItem food = foodRepo.findById(req.getFoodItemId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Food not found"));
 
+        boolean wasOrdered = order.getItems().stream()
+                .anyMatch(i -> i.getFoodItem().getId().equals(food.getId()));
+        if (!wasOrdered) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "This item was not part of the order");
+        }
+
         if (reviewRepo.existsByUserIdAndFoodItemIdAndOrderId(user.getId(), food.getId(), order.getId())) {
             throw new ApiException(HttpStatus.CONFLICT, "Already reviewed this food in this order");
         }
@@ -50,7 +58,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewDtos.Response> forFood(Long foodId) {
-        return reviewRepo.findByFoodItemId(foodId).stream().map(this::toDto).toList();
+        return reviewRepo.findByFoodItemIdOrderByCreatedAtDesc(foodId).stream().map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +66,19 @@ public class ReviewService {
         User u = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
         return reviewRepo.findByUserId(u.getId()).stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewDtos.Response> all(Pageable pageable) {
+        return PageResponse.of(reviewRepo.findAllBy(pageable), this::toDto);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!reviewRepo.existsById(id)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Review not found");
+        }
+        reviewRepo.deleteById(id);
     }
 
     private ReviewDtos.Response toDto(Review r) {

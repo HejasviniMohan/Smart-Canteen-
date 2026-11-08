@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,21 +27,15 @@ public class FoodService {
 
     @Transactional(readOnly = true)
     public List<FoodDtos.Response> findAll(Long categoryId, Boolean available, Boolean todaySpecial) {
-        List<FoodItem> items;
-        if (categoryId != null && available != null) {
-            items = foodRepo.findByCategoryId(categoryId).stream()
-                    .filter(f -> f.getAvailability().equals(available)).toList();
-        } else if (categoryId != null) {
-            items = foodRepo.findByCategoryId(categoryId);
-        } else if (available != null) {
-            items = foodRepo.findByAvailability(available);
-        } else {
-            items = foodRepo.findAll();
+        Map<Long, Object[]> ratings = new HashMap<>();
+        for (Object[] row : reviewRepo.ratingSummaries()) {
+            ratings.put((Long) row[0], row);
         }
-        if (Boolean.TRUE.equals(todaySpecial)) {
-            items = items.stream().filter(f -> Boolean.TRUE.equals(f.getIsTodaySpecial())).toList();
-        }
-        return items.stream().map(this::toDto).toList();
+        return foodRepo.search(categoryId, available, todaySpecial).stream().map(f -> {
+            Object[] rating = ratings.get(f.getId());
+            return toDto(f, rating == null ? null : ((Number) rating[1]).doubleValue(),
+                    rating == null ? 0L : ((Number) rating[2]).longValue());
+        }).toList();
     }
 
     @Transactional(readOnly = true)
@@ -47,11 +43,18 @@ public class FoodService {
         return toDto(getOrThrow(id));
     }
 
+    private void validateSpecialPrice(BigDecimal price, BigDecimal specialPrice) {
+        if (specialPrice != null && specialPrice.compareTo(price) >= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Special price must be lower than the regular price");
+        }
+    }
+
     @Transactional
     public FoodDtos.Response create(FoodDtos.CreateRequest req) {
         Category cat = categoryRepo.findById(req.getCategoryId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
                         "Category not found: " + req.getCategoryId()));
+        validateSpecialPrice(req.getPrice(), req.getSpecialPrice());
         FoodItem f = FoodItem.builder()
                 .category(cat)
                 .name(req.getName())
@@ -80,6 +83,8 @@ public class FoodService {
         if (req.getDescription() != null) f.setDescription(req.getDescription());
         if (req.getPrice() != null)        f.setPrice(req.getPrice());
         if (req.getSpecialPrice() != null) f.setSpecialPrice(req.getSpecialPrice());
+        if (Boolean.TRUE.equals(req.getClearSpecialPrice())) f.setSpecialPrice(null);
+        validateSpecialPrice(f.getPrice(), f.getSpecialPrice());
         if (req.getIsTodaySpecial() != null) f.setIsTodaySpecial(req.getIsTodaySpecial());
         if (req.getImageUrl() != null)    f.setImageUrl(req.getImageUrl());
         if (req.getPrepTimeMin() != null) f.setPrepTimeMin(req.getPrepTimeMin());
@@ -97,32 +102,40 @@ public class FoodService {
 
     @Transactional
     public void delete(Long id) {
-        foodRepo.delete(getOrThrow(id));
+        // Past orders still reference this item, so it is hidden rather than removed.
+        FoodItem f = getOrThrow(id);
+        f.setDeleted(true);
+        f.setAvailability(false);
+        f.setIsTodaySpecial(false);
     }
 
     private FoodItem getOrThrow(Long id) {
         return foodRepo.findById(id)
+                .filter(f -> !Boolean.TRUE.equals(f.getDeleted()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Food item not found: " + id));
     }
 
     private FoodDtos.Response toDto(FoodItem f) {
-        Double avg = reviewRepo.averageRatingForFood(f.getId());
-        Long count = (long) reviewRepo.findByFoodItemId(f.getId()).size();
+        return toDto(f, reviewRepo.averageRatingForFood(f.getId()), reviewRepo.countByFoodItemId(f.getId()));
+    }
+
+    private FoodDtos.Response toDto(FoodItem f, Double averageRating, long reviewCount) {
         return FoodDtos.Response.builder()
                 .id(f.getId())
                 .categoryId(f.getCategory().getId())
                 .categoryName(f.getCategory().getName())
                 .name(f.getName())
                 .description(f.getDescription())
-                .price(f.getPrice() == null ? BigDecimal.ZERO : f.getPrice())
+                .price(f.getPrice())
                 .specialPrice(f.getSpecialPrice())
+                .effectivePrice(f.effectivePrice())
                 .isTodaySpecial(Boolean.TRUE.equals(f.getIsTodaySpecial()))
                 .availability(f.getAvailability())
                 .imageUrl(f.getImageUrl())
                 .prepTimeMin(f.getPrepTimeMin())
                 .isVeg(f.getIsVeg())
-                .averageRating(avg)
-                .reviewCount(count)
+                .averageRating(averageRating)
+                .reviewCount(reviewCount)
                 .build();
     }
 }

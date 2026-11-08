@@ -1,29 +1,39 @@
+# Render has no native Java runtime, so this builds from backend/Dockerfile.
 services:
   - type: web
     name: smart-canteen-backend
-    env: java
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
     region: singapore
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/smart-canteen-backend-1.0.0.jar --spring.profiles.active=prod
-    healthCheckPath: /api/health
+    plan: free
+    healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DATABASE_URL
+      - key: DATABASE_URL # JDBC form, e.g. jdbc:postgresql://host/db?sslmode=require
         sync: false
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
         sync: false
       - key: JWT_SECRET
-        sync: false
-      - key: JWT_EXPIRATION_MS
-        value: 86400000
+        generateValue: true
+      - key: PICKUP_SECRET
+        generateValue: true
+      - key: PAYMENT_GATEWAY
+        value: razorpay
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
-      - key: CORS_ALLOWED_ORIGINS
-        # Replace with your Vercel frontend URL after deployment
-        # e.g. https://smart-canteen.vercel.app
-        value: https://smart-canteen-git-main-hejasvinimohans-projects.vercel.app
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS # Your Vercel URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SEED_DEMO_DATA # true adds demo accounts with published passwords
+        value: "false"

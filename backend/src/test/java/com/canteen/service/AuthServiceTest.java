@@ -50,7 +50,7 @@ class AuthServiceTest {
     void register_persists() {
         AuthDtos.RegisterRequest req = AuthDtos.RegisterRequest.builder()
                 .name("Bob").email("bob@x.com").password("secret1")
-                .role(Role.STUDENT).phone("9999900000").build();
+                .phone("9999900000").build();
 
         when(userRepo.existsByEmail("bob@x.com")).thenReturn(false);
         when(encoder.encode("secret1")).thenReturn("hashed");
@@ -75,7 +75,7 @@ class AuthServiceTest {
     @DisplayName("register: rejects duplicate email with 409")
     void register_rejectsDuplicateEmail() {
         AuthDtos.RegisterRequest req = AuthDtos.RegisterRequest.builder()
-                .name("Bob").email("bob@x.com").password("secret1").role(Role.STUDENT).build();
+                .name("Bob").email("bob@x.com").password("secret1").build();
 
         when(userRepo.existsByEmail("bob@x.com")).thenReturn(true);
 
@@ -118,7 +118,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("login: disabled account -> 403")
+    @DisplayName("login: disabled account -> same 401 as any other failure")
     void login_disabledAccount() {
         storedStudent.setEnabled(false);
         AuthDtos.LoginRequest req = AuthDtos.LoginRequest.builder()
@@ -129,6 +129,6 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service.login(req))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> assertThat(((ApiException) ex).getStatus())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
     }
 }

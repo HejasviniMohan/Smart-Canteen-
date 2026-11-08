@@ -50,11 +50,24 @@ public class FoodItem {
     @Builder.Default
     private Boolean isVeg = true;
 
+    /** Hidden from the menu but kept, because past orders still reference it. */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean deleted = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /** The price a customer actually pays. The only pricing rule in the system. */
+    public BigDecimal effectivePrice() {
+        if (specialPrice != null && specialPrice.signum() > 0 && specialPrice.compareTo(price) < 0) {
+            return specialPrice;
+        }
+        return price;
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -62,6 +75,7 @@ public class FoodItem {
         this.createdAt = now;
         this.updatedAt = now;
         if (this.availability == null) this.availability = true;
+        if (this.deleted == null) this.deleted = false;
         if (this.isVeg == null) this.isVeg = true;
         if (this.prepTimeMin == null) this.prepTimeMin = 10;
         if (this.isTodaySpecial == null) this.isTodaySpecial = false;
