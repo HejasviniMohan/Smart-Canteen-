@@ -6,6 +6,7 @@ target/
 .env
 .env.local
 .env.*
+!.env.example
 .DS_Store
 node_modules/
 dist/
@@ -13,12 +14,8 @@ build/
 out/
 classes/
 HELP.md
-.mvn/
-mvnw
-mvnw.cmd
 .gradle/
 *.class
-package-lock.json
 
 # Sensitive local files
 backend/app.err
