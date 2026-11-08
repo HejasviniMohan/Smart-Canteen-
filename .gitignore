@@ -20,3 +20,6 @@ HELP.md
 # Sensitive local files
 backend/app.err
 backend/pgpass.txt
+.vercel
+.env*
+!.env.example
