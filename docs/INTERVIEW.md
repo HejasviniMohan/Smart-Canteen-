@@ -1,6 +1,8 @@
 # Interview guide
 
-Written for Hejasvini. **Before any interview: run the demo yourself, read the key files below, and make sure you can explain each decision in your own words.** Interviewers follow up, and "why" matters more than "what".
+Written for Hejasvini. Live site: **https://smart-canteen-ruby.vercel.app**. For how the deployment works and where to look when something breaks, see [KT.md](KT.md).
+
+**Before any interview: run the demo yourself, read the key files below, and make sure you can explain each decision in your own words.** Interviewers follow up, and "why" matters more than "what".
 
 If you're asked how it was built, be straightforward about any help you had, including AI tools. Owning and defending the decisions is what impresses people.
 
@@ -28,6 +30,26 @@ If you're asked how it was built, be straightforward about any help you had, inc
 | 8 | Window 1: Hand over, then Hand Over Food | "One atomic update, so a double scan can't hand it over twice." The camera scan works here too, if you have a second device. |
 | 9 | Log in as **Admin** and show the dashboard and Payments | "Real analytics from real queries." |
 | 10 | Show the tests: `SlotApiTest` and `PickupApiTest` | "Here's the 50-request test that proves there's no overbooking." |
+
+## Demo on the live site
+
+Use this when you can't run Docker, or when the interviewer wants a link: **https://smart-canteen-ruby.vercel.app**
+
+**Before the call**
+- Open the site **5 minutes early**. The free backend sleeps after 15 idle minutes, and the first request takes about a minute.
+- Have the three logins ready from your password manager. The live site has **no demo buttons**, on purpose.
+- Use two browser windows (one private), or a laptop and a phone.
+
+| # | Do this | Say this |
+|---|---|---|
+| 1 | Window 1: log in as staff | "Same live board, now running on Render, with the data in Neon Postgres." |
+| 2 | Window 2: log in as student, order, choose **Pay online** | "This is Razorpay's real checkout, in test mode." |
+| 3 | Pay with UPI `success@razorpay` | "The browser sends back a signature, and the server checks it with HMAC before marking the order paid." |
+| 4 | Window 1: the order appears without a refresh | "Server-Sent Events, published after the database commit." |
+| 5 | Optional: place another paid order and cancel it as the student | "Cancelling before cooking starts refunds through Razorpay. You can see it in their dashboard." |
+| 6 | Optional: scan the student's QR code with a phone as staff | "The camera needs HTTPS, which is one reason this had to be deployed rather than only run locally." |
+
+If Razorpay or the Wi-Fi misbehaves, switch to the local Docker demo above. The sandbox needs no internet.
 
 ## Code tour
 
@@ -86,6 +108,33 @@ A second one: the camera test failed about 1 run in 25. The obvious suspect, a d
 **How does dark mode work?**
 Every colour is a named token (`--surface`, `--ink`, `--accent`) in `styles.css`, defined once per theme; components never use raw colours. Switching sets one attribute on `<html>`, and Bootstrap's own components follow through `data-bs-theme`. A small inline script applies the saved or system theme before the first paint, so there's no white flash. Every text pair was measured for WCAG contrast in both themes, and the QR code deliberately stays black on white because scanners need it.
 
+**How is it deployed?**
+Three free managed services:
+- **Vercel** serves the React build from a CDN.
+- **Render** runs the Spring Boot API as a Docker container, in Singapore.
+- **Neon** hosts Postgres, also in Singapore, so database calls stay close to the API.
+
+A push to `main` runs CI on GitHub Actions and redeploys automatically. The API refuses to start in production if a secret is missing, or if someone points it at the payment sandbox. A bad config fails loudly at startup rather than at the first payment.
+
+**Why not put everything on Vercel?**
+Vercel runs short-lived serverless functions. This API holds long-lived SSE connections open to every staff board and runs a scheduled job every minute to expire unpaid orders. Both need a process that stays running, so the API goes in a container. Separating static hosting, the API and the database is a normal production layout anyway.
+
+**How do database changes reach production?**
+Flyway migrations are versioned SQL files in the repo. The API applies any new ones when it starts, inside a transaction, and never edits one that's already run. The same migrations run in tests on real Postgres through Testcontainers, so production isn't the first place a migration runs on Postgres.
+
+**How did you handle secrets?**
+- None are in the repo; `.env` is git-ignored, and `.env.example` lists names only.
+- In production they live in Render's environment settings.
+- The JWT and QR-signing secrets are random 48-byte values.
+- The demo accounts' default passwords are public in the repo, so I replaced them with random ones before the site went live, and confirmed the old ones are rejected.
+- Razorpay stays in test mode, so no real money can move.
+
+**Why a direct database connection rather than Neon's pooler?**
+The pooler (PgBouncer in transaction mode) suits serverless code that opens a connection per request. This is one long-running process with its own HikariCP pool of 5 connections. Flyway's migrations also need a normal session, which the transaction-mode pooler doesn't provide.
+
+**What happens on a cold start?**
+The free Render plan sleeps after 15 idle minutes, so the first request takes about a minute while the JVM starts. A paid instance, or a lighter runtime like GraalVM native image, would remove that. For a demo I just open it early.
+
 **What did H2 hide?**
 A `HOUR()` query that works on H2 but not Postgres. That's why tests now run on real Postgres.
 
@@ -98,6 +147,7 @@ A `HOUR()` query that works on H2 but not Postgres. That's why tests now run on 
 - **Slot capacity counts orders, not prep time.**
 - **Refund calls run inside a transaction**, which holds a connection during the call (see ADR 2).
 - **The wait estimate is simple:** orders in the kitchen × a configured number of minutes.
+- **Free hosting:** the API sleeps when idle, so the first request after a quiet spell is slow.
 
 ## What I'd build next
 

@@ -2,6 +2,8 @@
 
 Order ahead, choose a pickup slot, and collect your food with a QR code. A full-stack campus canteen system built with React, Spring Boot and PostgreSQL, focused on correct behaviour under concurrency and failure.
 
+**Live demo:** https://smart-canteen-ruby.vercel.app (Razorpay in test mode, so no real money moves; the backend sleeps when idle and can take a minute to wake up).
+
 | Light | Dark |
 |---|---|
 | ![Home, light theme](docs/screenshots/home.png) | ![Home, dark theme](docs/screenshots/home-dark.png) |
@@ -33,7 +35,9 @@ Demo accounts exist only when demo data is on (`SEED_DEMO_DATA=true`, the local 
 | Staff | staff@canteen.com | Staff@123 |
 | Admin | admin@canteen.com | Admin@123 |
 
-Payments use a clearly labelled **sandbox** locally, so no account is needed and no money moves. See [Deployment](docs/DEPLOYMENT.md) for Razorpay test mode.
+These are for local use only. The live site doesn't use these passwords.
+
+Payments use a clearly labelled **sandbox** locally, so no account is needed and no money moves. See [Deployment](docs/DEPLOYMENT.md) for Razorpay test mode, and [KT](docs/KT.md) for how the live site is run.
 
 ## What it does
 
@@ -163,5 +167,5 @@ backend/src/main/java/com/canteen/
 backend/src/main/resources/db/migration/              Flyway migrations
 frontend/src/  pages/  components/  context/  services/  utils/
 frontend/e2e/  Playwright browser tests
-docs/          ADRs, deployment guide, interview guide
+docs/          ADRs, deployment guide, KT (operations), interview guide
 ```

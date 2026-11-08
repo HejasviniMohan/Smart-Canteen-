@@ -1,5 +1,7 @@
 # Deploying the live demo
 
+The current live deployment, and how to operate it, is described in [KT.md](KT.md). This page is the from-scratch recipe.
+
 Free tiers: **Vercel** (frontend), **Render** (backend), **Neon** (Postgres). Render and Vercel deploy from GitHub, so the code must be pushed first.
 
 Free Render services sleep when idle, and the first request can take about a minute. Open the site before an interview to wake it up.
@@ -9,6 +11,7 @@ Create a project and note the host, database, user and password. Build the JDBC 
 ```
 jdbc:postgresql://<host>/<database>?sslmode=require
 ```
+Use the **direct** host (without `-pooler`), and drop `&channel_binding=require` from Neon's string: the Java driver doesn't recognise it. Pick the same region as the backend (Singapore here).
 Flyway creates the tables on first startup.
 
 ## 2. Razorpay (test mode)
@@ -17,7 +20,7 @@ Flyway creates the tables on first startup.
 3. In payment capture settings, enable **automatic capture**. Refunds need captured payments.
 4. After step 3 below, add a webhook:
    - URL: `https://<render-app>.onrender.com/api/payments/webhook`
-   - Events: `payment.captured`, `payment.failed`
+   - Events: `payment.captured`, `payment.failed`, `order.paid`
    - Choose a secret: this is `RAZORPAY_WEBHOOK_SECRET`.
 
 ## 3. Backend (Render)
@@ -44,6 +47,8 @@ Import the repo with **Root Directory** `frontend`, and set:
 
 ## Letting interviewers try it
 Set `SEED_DEMO_DATA=true` and `VITE_DEMO_MODE=true` to add demo accounts, past orders, and role buttons on the login page.
+
+A safer option, used for the current deployment: start the backend once with `SEED_DEMO_DATA=true` against the new database (for example locally), immediately change the three demo passwords through `PUT /api/auth/me/password`, then deploy with `SEED_DEMO_DATA=false` and no `VITE_DEMO_MODE`. You get the menu and charts without published logins.
 
 The demo accounts have published passwords, including an admin. Anyone can change the demo's data, so use this only for a throwaway demo database with Razorpay in **test mode**, and never with real keys or real users.
 
