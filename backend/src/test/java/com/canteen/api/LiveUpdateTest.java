@@ -96,7 +96,8 @@ class LiveUpdateTest {
 
         Category category = categories.save(Category.builder().name(UUID.randomUUID().toString()).build());
         FoodItem food = foods.save(FoodItem.builder().category(category).name("Dosa").price(new BigDecimal("50")).build());
-        String slot = LocalDate.now(ZoneId.of("Asia/Kolkata")).plusDays(1).atTime(9, 0).toString();
+        // A slot no other test touches: SlotApiTest shrinks some slots to capacity 1.
+        String slot = LocalDate.now(ZoneId.of("Asia/Kolkata")).plusDays(1).atTime(16, 30).toString();
         String body = """
                 {"items":[{"foodItemId":%d,"quantity":1}],"paymentMethod":"CASH_ON_PICKUP","pickupSlot":"%s"}
                 """.formatted(food.getId(), slot);
