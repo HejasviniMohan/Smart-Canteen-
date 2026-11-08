@@ -38,7 +38,7 @@ The browser calls the API directly, so the API only accepts browser requests fro
 1. Commit and push to `main`.
 2. **GitHub Actions** runs lint, unit tests, backend tests on real Postgres, and browser tests. A red CI run doesn't stop deploys, so check it.
 3. **Render** rebuilds the API from `backend/Dockerfile` and switches over when it's healthy. This takes about 5 to 8 minutes, and the old version keeps serving until then.
-4. **Vercel** rebuilds the website from `frontend/`. Automatic deploys need Vercel's GitHub app to have access to the repo (see [Still to do](#still-to-do)). Until then, deploy by hand from the repo root:
+4. **Vercel** rebuilds the website from `frontend/` (about 1 minute). To deploy by hand from the repo root without pushing:
    ```bash
    vercel deploy --prod
    ```
@@ -130,7 +130,7 @@ The live site has three accounts: `admin@canteen.com`, `staff@canteen.com` and `
 | Connection error mentioning `channel_binding` | `&channel_binding=require` was copied into `DATABASE_URL` | Remove it. The Java driver doesn't recognise it |
 | Payment popup fails to open | Wrong `RAZORPAY_KEY_ID`, or not a test key | Check the value in Render |
 | Payment succeeded in Razorpay, but the order shows unpaid after closing the tab | The webhook isn't set up or its secret differs | Razorpay → Webhooks → check deliveries and the secret |
-| Website shows an old version | The deploy didn't run (GitHub app missing) | Run `vercel deploy --prod` |
+| Website shows an old version | The Vercel deploy failed or didn't run | Vercel → Deployments. Check the build log, or run `vercel deploy --prod` |
 | QR camera doesn't start | The camera needs HTTPS and permission | Use the live HTTPS site and allow the camera |
 
 ## Free plan limits
@@ -160,10 +160,7 @@ Local runs use their own Postgres container and never touch Neon.
 
 ## Still to do
 
-- [ ] **Let Vercel see the repo:** go to https://github.com/apps/vercel/installations/new, choose `HejasviniMohan`, and give it access to `Smart-Canteen-`. Then run `vercel git connect https://github.com/HejasviniMohan/Smart-Canteen-` in the repo. After that, every push redeploys the website.
-- [ ] **Razorpay webhook**, if it isn't added yet:
-  - **URL:** `https://smart-canteen-backend-jqcm.onrender.com/api/payments/webhook`
-  - **Events:** `payment.captured`, `payment.failed`, `order.paid`
-  - **Secret:** the same value as `RAZORPAY_WEBHOOK_SECRET`
+- [x] Vercel deploys automatically on every push to `main`.
+- [x] Razorpay webhook added (`payment.captured`, `payment.failed`, `order.paid`).
 - [ ] **One live test payment** with UPI `success@razorpay`, then cancel a paid order and confirm the refund appears in Razorpay.
 - [ ] **Camera pickup on two real phones:** one shows the student's QR code, the other scans it as staff.
