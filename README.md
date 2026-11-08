@@ -1,434 +1,167 @@
-# Smart Canteen Management System
+# Smart Canteen
 
-A full-stack smart campus canteen management system designed to help students
-**order food in advance, avoid queues, make payments, receive a digital pickup
-token, and collect food using a QR code.**
+Order ahead, choose a pickup slot, and collect your food with a QR code. A full-stack campus canteen system built with React, Spring Boot and PostgreSQL, focused on correct behaviour under concurrency and failure.
 
-The system provides separate interfaces for students, canteen staff, and
-administrators to manage the complete food ordering and pickup workflow.
+| Light | Dark |
+|---|---|
+| ![Home, light theme](docs/screenshots/home.png) | ![Home, dark theme](docs/screenshots/home-dark.png) |
 
----
+| Checkout with pickup slots | Staff pickup verification | Admin analytics |
+|---|---|---|
+| ![Checkout](docs/screenshots/checkout.png) | ![Pickup](docs/screenshots/staff-pickup.png) | ![Admin](docs/screenshots/admin-dashboard.png) |
 
-## 🎯 Problem Statement
+## Quick start
 
-Traditional college canteens often have long queues during lunch and break
-hours. Students spend a significant amount of time waiting to place orders
-and collect food.
-
-The Smart Canteen Management System solves this problem by allowing students
-to:
-
-1. Browse the menu online
-2. Select food items
-3. Add items to the cart
-4. Place an order in advance
-5. Select a payment method
-6. Receive a digital order token
-7. Receive a QR code for pickup
-8. Track order preparation
-9. Show the QR code at the canteen
-10. Collect the prepared food without waiting in a long queue
-
----
-
-## 🚀 Key Features
-
-### 👨‍🎓 Student
-
-- User registration and login
-- JWT-based authentication
-- Browse food menu
-- Search food items
-- Browse food by categories
-- Today's Specials
-- Food availability status
-- Add/remove items from cart
-- Update item quantities
-- Checkout
-- Multiple payment methods
-- Digital order token generation
-- QR code generation
-- Order confirmation
-- Live order status tracking
-- Order history
-- Order details
-- Reviews and ratings
-- Profile management
-- Notifications
-
-### Order Flow
-
-```
-Browse Menu → Select Food → Add to Cart → Checkout → Select Payment Method
-→ Payment / Confirmation → Order Created → Digital Token Generated
-→ QR Code Generated → Canteen Prepares Order → Student Shows QR Code
-→ Staff Verifies QR → Food Collected
-```
-
----
-
-### 👨‍🍳 Canteen Staff
-
-Staff members can manage day-to-day canteen operations.
-
-- Staff login
-- View incoming orders
-- View order details
-- Update order status
-- Accept orders
-- Mark orders as preparing
-- Mark orders as ready
-- Verify digital tokens
-- Scan/verify customer QR codes
-- Mark orders as collected
-- Handle Cash on Pickup payments
-- Toggle food availability
-- Monitor active orders
-
-### Order Status
-
-```
-PLACED → ACCEPTED → PREPARING → READY → COMPLETED
-```
-
----
-
-### 👨‍💼 Admin
-
-Administrators have complete control over the canteen system.
-
-- Admin authentication
-- User management (students and staff)
-- Food management (add/edit/delete)
-- Category management
-- Food availability management
-- Today's Specials management
-- Order management
-- Payment monitoring
-- Sales and order analytics
-- Dashboard statistics
-- Review management
-
----
-
-## 💳 Payment System
-
-The application supports multiple payment options:
-
-- **UPI** — Demo/sandbox mode
-- **Card** — Demo/sandbox mode with form validation
-- **Wallet** — Demo/sandbox mode
-- **Cash on Pickup** — Pay in person when collecting
-
-> ⚠️ **Demo/Sandbox Payment** — All payment methods use a simulated flow for
-> demonstration purposes. No real money is transferred. Production deployments
-> must configure real payment gateway credentials.
-
-### Payment Flow (Online Methods)
-
-```
-Select Payment Method → Validate Payment → Payment Successful
-→ Create Order → Generate Token → Generate QR Code
-```
-
-### Payment Flow (Cash on Pickup)
-
-```
-Select Cash on Pickup → Place Order → Payment Status = PENDING
-→ Generate Token + QR → Collect Food → Staff Receives Cash
-→ Staff Marks Payment PAID → Order Complete
-```
-
----
-
-## 🎟️ Digital Token System
-
-Every successful order receives a unique digital pickup token (e.g. `A100`).
-
-The token helps canteen staff quickly identify and process customer orders
-without requiring the customer to stand in a queue.
-
----
-
-## 📱 QR Pickup System
-
-A QR code is generated for every confirmed order. The student can access the
-QR code from:
-
-- Order Confirmation page
-- My Orders page
-- Order Details page
-
-### Pickup Process
-
-```
-Student places order → Digital Token Generated → QR Code Generated
-→ Canteen prepares food → Student reaches pickup counter
-→ Student shows QR Code → Staff verifies QR → Order marked COLLECTED
-→ Student receives food
-```
-
-The QR code contains only an order/token reference — **no sensitive payment
-information**.
-
----
-
-## 🖥️ Technology Stack
-
-### Frontend
-- React.js 19
-- Vite
-- JavaScript
-- Bootstrap 5
-- Framer Motion
-- Recharts
-
-### Backend
-- Java 17
-- Spring Boot 3.3.5
-- Spring Security + JWT
-- BCrypt password hashing
-- Spring Data JPA / Hibernate
-- REST APIs
-- Swagger / OpenAPI
-
-### Database
-- **Dev:** H2 (in-memory, PostgreSQL compatibility mode)
-- **Prod:** PostgreSQL
-
-### Other
-- **QR Code:** ZXing
-- **Payment:** Demo/Sandbox flow (Razorpay-compatible structure)
-- **Deployment:** Render (backend), Vercel (frontend)
-
----
-
-## 🏗️ Project Architecture
-
-```
-                 Smart Canteen
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-     React Frontend       Spring Boot Backend
-          │                       │
-          │                  REST APIs + JWT
-          │                       │
-          │                 Service Layer
-          │                       │
-          │                 Repository Layer
-          │                       │
-          └───────────────┬───────┘
-                          │
-                    PostgreSQL
-```
-
----
-
-## 📁 Project Structure
-
-```
-smart-canteen/
-│
-├── backend/
-│   ├── src/main/java/com/canteen/
-│   │   ├── config/       # Security, CORS, OpenAPI, DataSeeder
-│   │   ├── controller/   # REST endpoints
-│   │   ├── dto/          # Request/Response DTOs
-│   │   ├── entity/       # JPA entities
-│   │   ├── exception/    # Error handling
-│   │   ├── repository/   # JPA repositories
-│   │   ├── security/     # JWT filter, UserDetailsService
-│   │   ├── service/      # Business logic
-│   │   └── util/         # TokenGenerator
-│   ├── src/main/resources/
-│   │   ├── application.properties
-│   │   ├── application-dev.properties
-│   │   └── application-prod.properties
-│   ├── src/test/
-│   └── pom.xml
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/   # Reusable UI components
-│   │   ├── context/      # Auth + Cart React contexts
-│   │   ├── data/         # Static data
-│   │   ├── pages/        # Route pages
-│   │   ├── services/     # API clients
-│   │   └── styles.css    # Global styles
-│   ├── public/
-│   ├── package.json
-│   └── vite.config.js
-│
-├── db/
-│   └── schema.sql        # PostgreSQL production schema
-│
-├── docker-compose.yml
-├── README.md
-└── .gitignore
-```
-
----
-
-## 🔐 Authentication & Authorization
-
-Three roles are supported:
-
-| Role    | Description                                  |
-|---------|----------------------------------------------|
-| STUDENT | Browse, order, pay, track, review            |
-| STAFF   | Manage orders, update status, verify QR, toggle availability |
-| ADMIN   | Full system access: users, foods, categories, analytics |
-
----
-
-## ⚙️ Local Development Setup
-
-### Prerequisites
-
-- JDK 17+
-- Maven 3.9+
-- Node.js 18+
-- npm
-
----
-
-### Backend Setup
+Needs only Docker.
 
 ```bash
-cd backend
-mvn spring-boot:run
+docker compose up --build
 ```
 
-Backend available at: `http://localhost:8080`
+Open **http://localhost:5173** and use the demo buttons on the login page. Ports can be changed: copy `.env.example` to `.env`.
 
-API docs (Swagger): `http://localhost:8080/swagger-ui/index.html`
+| Service | URL |
+|---|---|
+| App | http://localhost:5173 |
+| API docs | http://localhost:5173/swagger-ui/index.html |
 
-H2 Console: `http://localhost:8080/h2-console`
+Demo accounts exist only when demo data is on (`SEED_DEMO_DATA=true`, the local default):
 
----
+| Role | Email | Password |
+|---|---|---|
+| Student | student@canteen.com | Student@123 |
+| Staff | staff@canteen.com | Staff@123 |
+| Admin | admin@canteen.com | Admin@123 |
 
-### Frontend Setup
+Payments use a clearly labelled **sandbox** locally, so no account is needed and no money moves. See [Deployment](docs/DEPLOYMENT.md) for Razorpay test mode.
+
+## What it does
+
+**Students** browse and search the menu, choose a pickup slot, pay online or choose cash, track orders live, collect with a QR code, and review what they ate.
+
+**Staff** run the kitchen board with live updates, scan QR codes with a camera (or enter tokens), take cash, and mark items unavailable.
+
+**Admins** manage foods, categories, users, and reviews, monitor payments, and see revenue and peak-hour analytics.
+
+## Engineering highlights
+
+| Problem | Approach | Proof |
+|---|---|---|
+| **Overbooking** when many students want one slot | Atomic `UPDATE ... WHERE booked < capacity` | 50 concurrent checkouts, 10 places: exactly 10 succeed |
+| **Handing food over twice** | Atomic status update as the single gate | 10 concurrent scans: exactly 1 succeeds |
+| **Forged pickup codes** | HMAC-signed QR codes, sent only to the owner | Forged and altered codes are rejected |
+| **Fake or missed payments** | Signature checks, signed webhooks, idempotent settlement | Replayed, forged and wrong-amount webhooks tested |
+| **Double-click at checkout** | `Idempotency-Key` with a unique index | 10 concurrent identical requests: 1 order |
+| **Stale kitchen screens** | Server-Sent Events published after commit | Rolled-back changes are never announced |
+| **Abandoned checkouts** | Unpaid orders expire and release their slot | Tested with expired orders |
+
+Each decision and its trade-offs are written up in [`docs/adr`](docs/adr).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    S[Student browser] & K[Staff browser] & A[Admin browser] --> N[React SPA / nginx]
+    N -->|REST + JWT| B[Spring Boot API]
+    B -.->|Server-Sent Events| N
+    B --> P[(PostgreSQL)]
+    B -->|Create order, refund| R[Razorpay or sandbox]
+    R -->|Signed webhook| B
+```
+
+### Order lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_PAYMENT: Pay online
+    [*] --> PLACED: Cash at pickup
+    PENDING_PAYMENT --> PLACED: Payment verified
+    PENDING_PAYMENT --> CANCELLED: Expired or cancelled
+    PLACED --> ACCEPTED
+    ACCEPTED --> PREPARING
+    PREPARING --> READY
+    READY --> COMPLETED: QR scanned, paid
+    PLACED --> CANCELLED: Refund if paid
+    ACCEPTED --> CANCELLED: Refund if paid
+    PREPARING --> CANCELLED: Staff only, refund if paid
+```
+
+### Online payment
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant A as API
+    participant R as Razorpay
+    B->>A: Place order (Idempotency-Key)
+    A-->>B: PENDING_PAYMENT, slot held
+    B->>A: Start payment
+    A->>R: Create order
+    B->>R: Pay on hosted checkout
+    R-->>B: Signed result
+    B->>A: Verify signature
+    R->>A: Signed webhook (covers a closed tab)
+    Note over A: Either arrival settles once.<br/>The row lock and settle() make this safe.
+    A-->>B: Live update: PLACED
+```
+
+## Tech stack
+
+- **Frontend:** React 19, Vite, React Router, Bootstrap, Recharts, ZXing (QR scanning)
+- **Backend:** Java 17, Spring Boot 3.3, Spring Security, JPA/Hibernate, Flyway, Bucket4j
+- **Database:** PostgreSQL 16 in every environment
+- **Payments:** Razorpay (test mode), or a built-in sandbox
+- **Delivery:** Docker Compose, GitHub Actions, Render, Vercel
+
+## Security
+
+- Public sign-up only creates students, and admins create staff accounts
+- BCrypt passwords, JWT auth, and role and ownership checks on every endpoint, tested as a role-by-endpoint matrix
+- Disabling a user takes effect on their next request
+- Login rate limiting per email and per IP
+- No default secrets in production: the app refuses to start without them, or with the sandbox gateway
+- Card and UPI details stay on Razorpay's hosted checkout
+- Error responses never include internal details
+
+Known limitations are listed in the [interview guide](docs/INTERVIEW.md#known-limitations-say-these-before-youre-asked).
+
+## Testing
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd backend && ./mvnw verify      # Backend, on real Postgres via Testcontainers (Docker needed)
+cd frontend && npm test          # Frontend unit tests
+cd frontend && npm run lint
+
+# Browser tests, against the running stack. The higher login limit lets the
+# tests log in as the same demo accounts many times a minute.
+LOGIN_LIMIT_PER_EMAIL=1000 docker compose up -d --build --wait
+cd frontend && npx playwright install chromium && npm run test:e2e
 ```
 
-Frontend available at: `http://localhost:5173`
+Browser tests cover the full order journey across two sessions with live updates, a camera scan using a fake video feed, failed payment retry, refunds, full slots, role access, and phone-width layout. They add data, so reset afterwards with `docker compose down -v`.
 
----
-
-### Running Both Simultaneously
+## Local development without Docker for the app
 
 ```bash
-# Terminal 1 — Backend
-cd backend && mvn spring-boot:run
-
-# Terminal 2 — Frontend
-cd frontend && npm install && npm run dev
+docker compose up -d postgres
+cd backend && ./mvnw spring-boot:run                     # http://localhost:8080
+cd frontend && npm install && npm run dev                # http://localhost:5173
 ```
 
-Open `http://localhost:5173` in your browser.
+If port 8080 is taken: run the backend with `PORT=8081`, and the frontend with `VITE_PROXY_TARGET=http://localhost:8081`.
 
----
-
-## 👤 Demo Accounts
-
-> ⚠️ **For local development/demo only. Never use in production.**
-
-| Role    | Email                        | Password    |
-|---------|------------------------------|-------------|
-| Admin   | admin@canteen.com            | Admin@123   |
-| Staff   | staff@canteen.com           | Staff@123   |
-| Student | student@canteen.com         | Student@123 |
-
----
-
-## 🧪 Testing Checklist
-
-### Student
-- [ ] Register / Login
-- [ ] Browse menu and search
-- [ ] Filter by category
-- [ ] View Today's Specials
-- [ ] Add/update/remove cart items
-- [ ] Checkout with UPI / Card / Wallet
-- [ ] Checkout with Cash on Pickup
-- [ ] Receive digital token
-- [ ] View and save QR code
-- [ ] Track order status
-- [ ] View order history
-- [ ] Submit a review
-
-### Staff
-- [ ] Staff login
-- [ ] View active orders
-- [ ] Accept / Prepare / Mark Ready
-- [ ] Verify QR / token
-- [ ] Handle Cash on Pickup (mark as PAID)
-- [ ] Mark order as collected
-- [ ] Toggle food availability
-
-### Admin
-- [ ] Admin login
-- [ ] Manage users
-- [ ] Manage food items
-- [ ] Manage categories
-- [ ] Mark Today's Specials
-- [ ] Toggle food availability
-- [ ] View all orders
-- [ ] View analytics dashboard
-
----
-
-## 🔒 Security Notes
-
-Production deployments must configure:
-
-- `JWT_SECRET` — strong, unique secret key
-- `POSTGRES_PASSWORD` — database password
-- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` — real gateway credentials
-- `CORS_ALLOWED_ORIGINS` — production frontend URL
-
-**Never commit secrets, passwords, or API keys to GitHub.**
-
----
-
-## 🌐 Production Deployment (Planned)
+## Project structure
 
 ```
-         Users
-           │
-           ▼
-   Vercel Frontend
-           │
-           ▼
-  Render Spring Boot API
-           │
-           ▼
-     PostgreSQL
+backend/src/main/java/com/canteen/
+  controller/  service/  repository/  entity/  dto/   Core layers
+  payment/     Gateway interface, Razorpay, sandbox
+  pickup/      Signed QR codes, counter endpoints
+  slots/       Pickup capacity, canteen status
+  realtime/    Server-Sent Events
+  security/    JWT filter, rate limiter
+backend/src/main/resources/db/migration/              Flyway migrations
+frontend/src/  pages/  components/  context/  services/  utils/
+frontend/e2e/  Playwright browser tests
+docs/          ADRs, deployment guide, interview guide
 ```
-
-Before going live: configure all environment variables, enable HTTPS,
-change all demo credentials, and run full end-to-end tests.
-
----
-
-## 🎯 Project Objective
-
-Reduce canteen waiting times by moving ordering and payment online.
-
-**Traditional canteen:**
-```
-Student → Queue → Place Order → Wait → Collect Food
-```
-
-**Smart Canteen:**
-```
-Student → Order Online → Pay/Confirm → Get Token + QR
-→ Canteen Prepares → Show QR → Collect Food
-```
-
-**Less waiting. Faster pickup. Better management.**
