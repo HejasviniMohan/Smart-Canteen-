@@ -2,9 +2,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "env": {
-    "VITE_API_BASE_URL": {
-      "description": "Production backend URL (e.g. https://smart-canteen-backend.onrender.com)"
-    }
-  }
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

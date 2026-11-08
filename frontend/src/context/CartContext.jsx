@@ -1,52 +1,44 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { addItem, cartCount, cartTotal, setQuantity } from '../utils/cart'
+import { useAuth } from './AuthContext'
 
 const CartContext = createContext(null)
 
+function readStoredCart() {
+  try {
+    return JSON.parse(localStorage.getItem('cart')) || []
+  } catch {
+    return []
+  }
+}
+
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    const raw = localStorage.getItem('cart')
-    return raw ? JSON.parse(raw) : []
-  })
+  const { user } = useAuth()
+  const [items, setItems] = useState(readStoredCart)
+  const wasLoggedIn = useRef(!!user)
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(items))
   }, [items])
 
-  const add = (food, qty = 1) => {
-    setItems((prev) => {
-      const found = prev.find((i) => i.id === food.id)
-      if (found) {
-        return prev.map((i) => i.id === food.id ? { ...i, quantity: i.quantity + qty } : i)
-      }
-      return [...prev, {
-        id: food.id,
-        name: food.name,
-        price: Number(food.price),
-        imageUrl: food.imageUrl,
-        isVeg: food.isVeg,
-        quantity: qty,
-      }]
-    })
+  // Stops the next person on a shared device from inheriting this cart.
+  useEffect(() => {
+    if (wasLoggedIn.current && !user) setItems([])
+    wasLoggedIn.current = !!user
+  }, [user])
+
+  const value = {
+    items,
+    add: (food, quantity = 1) => setItems((prev) => addItem(prev, food, quantity)),
+    updateQty: (id, quantity) => setItems((prev) => setQuantity(prev, id, quantity)),
+    remove: (id) => setItems((prev) => prev.filter((i) => i.id !== id)),
+    clear: () => setItems([]),
+    replace: setItems,
+    total: cartTotal(items),
+    count: cartCount(items),
   }
 
-  const updateQty = (id, quantity) => {
-    setItems((prev) => prev
-          .map((i) => i.id === id ? { ...i, quantity } : i)
-          .filter((i) => i.quantity > 0))
-  }
-
-  const remove = (id) => setItems((prev) => prev.filter((i) => i.id !== id))
-
-  const clear = () => setItems([])
-
-  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-  const count = items.reduce((sum, i) => sum + i.quantity, 0)
-
-  return (
-    <CartContext.Provider value={{ items, add, updateQty, remove, clear, total, count }}>
-      {children}
-    </CartContext.Provider>
-  )
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
 export const useCart = () => {

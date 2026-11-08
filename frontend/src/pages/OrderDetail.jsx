@@ -1,95 +1,120 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
-import { orderService } from '../services/orderService'
 import { toast } from 'react-toastify'
+import { orderService, reviewService } from '../services/orderService'
+import { errorMessage } from '../services/api'
+import { useAuth } from '../context/AuthContext'
+import { useLiveRefresh } from '../context/LiveUpdatesContext'
+import { canStudentCancel, isOngoing, STATUS_LABEL } from '../utils/orderStatus'
+import { dateTime, money, slotLabel } from '../utils/format'
+import OrderStatusTimeline from '../components/OrderStatusTimeline'
+import StatusBadge, { PaymentBadge } from '../components/StatusBadge'
+import PaymentPanel from '../components/PaymentPanel'
+import ReviewForm from '../components/ReviewForm'
+import { ErrorState, Skeleton } from '../components/Feedback'
 
 export default function OrderDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [order, setOrder] = useState(null)
+  const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    let timer
-    const load = () => {
-      orderService.get(id).then((r) => setOrder(r.data)).catch(() => {}).finally(() => setLoading(false))
-    }
-    load()
-    timer = setInterval(load, 5000)
-    return () => clearInterval(timer)
+  const isOwner = order && user && order.userId === (user.userId ?? user.id)
+
+  const load = useCallback(() => {
+    orderService.get(id)
+      .then((r) => { setOrder(r.data); setError(null) })
+      .catch((e) => setError(errorMessage(e, 'Order not found')))
+      .finally(() => setLoading(false))
   }, [id])
 
+  const loadReviews = useCallback(() => {
+    reviewService.mine().then((r) => setReviews(r.data)).catch(() => {})
+  }, [])
+
+  useEffect(load, [load])
+  useLiveRefresh(load, { filter: (e) => String(e.orderId) === String(id) })
+
+  useEffect(() => {
+    if (user?.role === 'STUDENT' && order?.status === 'COMPLETED') loadReviews()
+  }, [user?.role, order?.status, loadReviews])
+
   const handleCancel = async () => {
-    if (!confirm('Cancel this order?')) return
+    const paid = order.paymentStatus === 'PAID'
+    if (!window.confirm(paid ? 'Cancel this order? Your payment will be refunded.' : 'Cancel this order?')) return
     try {
       await orderService.cancel(id)
-      toast.success('Order cancelled')
-      navigate('/orders')
+      toast.success(paid ? 'Order cancelled. Your refund is on its way.' : 'Order cancelled')
+      load()
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Cannot cancel')
+      toast.error(errorMessage(e, 'Could not cancel the order'))
     }
   }
 
-  if (loading) return <div className="page-pad">Loading...</div>
-  if (!order) return <div className="page-pad">Order not found.</div>
+  if (loading) return <div className="page-pad" style={{ maxWidth: 680, margin: '0 auto' }}><Skeleton rows={3} height={160} /></div>
+  if (error && !order) return <div className="page-pad"><ErrorState message={error} onRetry={load} /></div>
 
-  const statusLabel = {
-    PLACED: 'Order Placed',
-    ACCEPTED: 'Accepted',
-    PREPARING: 'Preparing',
-    READY: 'Ready for Pickup',
-    COMPLETED: 'Completed',
-    CANCELLED: 'Cancelled',
-  }[order.status] || order.status
-
-  const statusColor = {
-    PLACED: '#fef3c7', ACCEPTED: '#dbeafe', PREPARING: '#ede9fe',
-    READY: '#d1fae5', COMPLETED: '#e5e7eb', CANCELLED: '#fee2e2',
-  }[order.status] || '#f1f5f9'
-
-  const statusTextColor = {
-    PLACED: '#92400e', ACCEPTED: '#1e40af', PREPARING: '#5b21b6',
-    READY: '#065f46', COMPLETED: '#1f2937', CANCELLED: '#991b1b',
-  }[order.status] || '#475569'
+  const awaitingPayment = order.status === 'PENDING_PAYMENT'
+  const showQr = isOwner && order.pickupCode
 
   return (
     <div className="page-pad" style={{ maxWidth: 680, margin: '0 auto' }}>
       <div className="od-header">
         <div>
-          <h2 className="od-title">Order Confirmed!</h2>
-          <p className="od-subtitle text-muted">Thank you for your order</p>
+          <h1 className="od-title">{STATUS_LABEL[order.status]}</h1>
+          <p className="od-subtitle text-muted">
+            {isOngoing(order.status) ? `Pickup: ${slotLabel(order.pickupSlot)}` : `Ordered ${dateTime(order.orderDate)}`}
+          </p>
         </div>
         <div className="od-token">
-          <div className="od-token-label">Your Token</div>
-          <div className="od-token-number">{order.tokenNumber}</div>
+          <div className="od-token-label">Token</div>
+          <div className="od-token-number" data-testid="order-token">{order.tokenNumber}</div>
         </div>
       </div>
 
-      <div style={{ background: statusColor, color: statusTextColor, padding: '12px 18px', borderRadius: '12px', fontSize: '0.92rem', fontWeight: 600, marginBottom: '20px', textAlign: 'center' }}>
-        {statusLabel}
-      </div>
+      <div className="mb-3" data-testid="order-status"><StatusBadge status={order.status} /></div>
+      <div className="mb-3"><OrderStatusTimeline current={order.status} /></div>
 
-      <div className="od-qr-section">
-        <p className="text-muted mb-3" style={{ fontSize: '0.88rem', textAlign: 'center' }}>Show this QR code at the counter</p>
-        <div className="od-qr-box">
-          <QRCodeCanvas value={`SMARTCANTEEN|TOKEN:${order.tokenNumber}|ORDER:${order.id}`} size={160} />
+      {awaitingPayment && isOwner && (
+        <PaymentPanel order={order} autoStart={searchParams.get('pay') === '1'} onPaid={load} />
+      )}
+
+      {showQr && (
+        <div className="od-qr-section">
+          <p className="text-muted mb-3" style={{ fontSize: '0.88rem', textAlign: 'center' }}>
+            {order.status === 'READY' ? 'Your food is ready! Show this at the counter.' : 'Show this at the counter when your order is ready.'}
+          </p>
+          <div className="od-qr-box">
+            <QRCodeCanvas value={order.pickupCode} size={180} level="M" role="img" aria-label={`Pickup QR code for token ${order.tokenNumber}`} />
+          </div>
+          <div className="od-token-big">{order.tokenNumber}</div>
+          {order.paymentStatus !== 'PAID' && <p className="text-muted mt-2 mb-0">Please have {money(order.totalAmount)} in cash ready.</p>}
         </div>
-        <div className="od-token-big">{order.tokenNumber}</div>
-      </div>
+      )}
+
+      {order.status === 'COMPLETED' && isOwner && (
+        <ReviewForm order={order} reviews={reviews} onSaved={loadReviews} />
+      )}
 
       <div className="od-card">
         <div className="od-section-title">Order Details</div>
         <div className="od-meta-grid">
           <div className="od-meta-item"><span>Order ID</span><strong>#{order.id}</strong></div>
-          <div className="od-meta-item"><span>Date</span><strong>{new Date(order.createdAt || order.orderDate).toLocaleString()}</strong></div>
-          <div className="od-meta-item"><span>Payment</span><strong className={order.paymentStatus === 'PAID' ? 'text-success' : 'text-danger'}>{order.paymentStatus}</strong></div>
+          {!isOwner && <div className="od-meta-item"><span>Customer</span><strong>{order.userName}</strong></div>}
+          <div className="od-meta-item"><span>Ordered</span><strong>{dateTime(order.orderDate)}</strong></div>
+          <div className="od-meta-item"><span>Payment</span><strong><PaymentBadge order={order} /></strong></div>
+          {order.collectedAt && <div className="od-meta-item"><span>Collected</span><strong>{dateTime(order.collectedAt)}</strong></div>}
           {order.notes && <div className="od-meta-item od-notes"><span>Notes</span><strong>{order.notes}</strong></div>}
         </div>
       </div>
 
       <div className="od-card">
-        <div className="od-section-title">Items ({order.items?.length || 0})</div>
+        <div className="od-section-title">Items ({order.items.length})</div>
         <div className="od-items">
           {order.items.map((i) => (
             <div key={i.id} className="od-item">
@@ -97,22 +122,27 @@ export default function OrderDetail() {
                 <span className="od-item-name">{i.foodItemName}</span>
                 <span className="od-item-qty">× {i.quantity}</span>
               </div>
-              <span className="od-item-price">₹{Number(i.subtotal).toFixed(0)}</span>
+              <span className="od-item-price">{money(i.subtotal)}</span>
             </div>
           ))}
         </div>
         <div className="od-total-row">
-          <span>Total Paid</span>
-          <span className="od-total-amount">₹{Number(order.totalAmount).toFixed(0)}</span>
+          <span>Total</span>
+          <span className="od-total-amount">{money(order.totalAmount)}</span>
         </div>
       </div>
 
       <div className="d-flex gap-2 mt-3 flex-wrap">
-        {['PLACED', 'ACCEPTED'].includes(order.status) && (
+        {isOwner && canStudentCancel(order.status) && (
           <button className="btn od-cancel-btn" onClick={handleCancel}>Cancel Order</button>
         )}
-        <button className="btn od-secondary-btn" onClick={() => navigate('/orders')}>All My Orders</button>
+        <button className="btn od-secondary-btn" onClick={() => navigate(-1)}>Back</button>
       </div>
+      {isOwner && ['PREPARING', 'READY'].includes(order.status) && (
+        <p className="text-muted small mt-2 mb-0">
+          The kitchen has started on this order, so it can no longer be cancelled.
+        </p>
+      )}
     </div>
   )
 }

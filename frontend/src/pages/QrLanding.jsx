@@ -1,11 +1,6 @@
-import { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 
+/** Target of a QR poster at the canteen: scanning it opens the menu directly. */
 export default function QrLanding() {
-  const { canteenId } = useParams()
-  const navigate = useNavigate()
-  useEffect(() => {
-    navigate(`/menu?canteen=${canteenId || 'main'}`, { replace: true })
-  }, [canteenId, navigate])
-  return <div className="page-pad">Redirecting to menu...</div>
+  return <Navigate to="/menu" replace />
 }

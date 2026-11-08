@@ -1,43 +1,37 @@
-import { motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { useCart } from '../context/CartContext'
-import { COMBOS } from '../data/homeData'
+import { useAuth } from '../context/AuthContext'
+import { money } from '../utils/format'
+import FoodImage from './FoodImage'
 
-export default function ComboCarousel() {
+/** Combos are ordinary menu items in the Combos category, so they order like anything else. */
+export default function ComboCarousel({ combos }) {
   const { add } = useCart()
-
-  const handleAddCombo = (c) => {
-    toast.error('Combos must be ordered in-person at the canteen')
-  }
+  const { user } = useAuth()
+  const canOrder = !user || user.role === 'STUDENT'
 
   return (
     <div className="sc-carousel">
-      {COMBOS.map((c, idx) => (
-        <motion.div
-          key={c.id}
-          className="sc-combo"
-          initial={{ opacity: 0, x: 30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: idx * 0.05 }}
-        >
-          <div className="img-box">
-            <span className="save-badge">SAVE ₹{c.save}</span>
-            <span>{c.emoji}</span>
+      {combos.map((c) => (
+        <article key={c.id} className="sc-combo">
+          <div className="combo-img"><FoodImage food={c} placeholderClass="sc-food-placeholder" /></div>
+          <div className="combo-body">
+            <h3 className="name">{c.name}</h3>
+            <p className="includes">{c.description}</p>
+            <div className="price-row">{money(c.effectivePrice)}</div>
+            {canOrder && (
+              <button
+                type="button"
+                className="add-combo"
+                onClick={() => { add(c, 1); toast.success(`${c.name} added to cart`) }}
+                aria-label={`Add ${c.name} to cart`}
+              >
+                <Plus size={15} /> Add combo
+              </button>
+            )}
           </div>
-          <div className="body">
-            <h6 className="name">{c.name}</h6>
-            <p className="includes">Includes: {c.includes}</p>
-            <div className="price-row">
-              <span className="new">₹{c.price}</span>
-              <span className="old">₹{c.mrp}</span>
-            </div>
-            <button className="add-combo" onClick={() => handleAddCombo(c)}>
-              <Plus size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Add Combo
-            </button>
-          </div>
-        </motion.div>
+        </article>
       ))}
     </div>
   )

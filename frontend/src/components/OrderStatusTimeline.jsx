@@ -1,14 +1,14 @@
+import { timelineSteps } from '../utils/orderStatus'
+
 export default function OrderStatusTimeline({ current }) {
-  const steps = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED']
-  const idx = steps.indexOf(current)
+  if (current === 'CANCELLED' || current === 'PENDING_PAYMENT') return null
   return (
-    <div className="timeline">
-      {steps.map((s, i) => {
-        let cls = 'timeline-step'
-        if (i < idx) cls += ' done'
-        else if (i === idx) cls += ' active'
-        return <div key={s} className={cls}>{s}</div>
-      })}
-    </div>
+    <ol className="timeline" aria-label="Order progress">
+      {timelineSteps(current).map(({ step, label, state }) => (
+        <li key={step} className={`timeline-step ${state === 'todo' ? '' : state}`} aria-current={state === 'active' ? 'step' : undefined}>
+          {label}
+        </li>
+      ))}
+    </ol>
   )
 }

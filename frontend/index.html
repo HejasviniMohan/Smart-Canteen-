@@ -1,17 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light" data-bs-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Smart Canteen — Skip the queue, order ahead, and pick up your meal with a digital token. Modern food ordering for college campuses." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Order ahead, choose a pickup slot, and collect your food with a QR code. Food ordering for college campuses." />
+    <meta name="theme-color" content="#ECEFF3" />
+    <!--
+      Applies the saved or system theme before the first paint, so a dark-mode visitor
+      never sees a white flash. Must stay in sync with src/theme.js.
+    -->
+    <script>
+      (function () {
+        var theme = 'light'
+        try {
+          var saved = localStorage.getItem('sc-theme')
+          if (saved === 'light' || saved === 'dark') theme = saved
+          else if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark'
+        } catch (e) { /* storage blocked: fall back to light */ }
+        var root = document.documentElement
+        root.setAttribute('data-theme', theme)
+        root.setAttribute('data-bs-theme', theme)
+        root.style.colorScheme = theme
+      })()
+    </script>
+    <!-- Both families include the rupee sign, which most Latin fonts lack. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Wix+Madefor+Text:wght@400..700&display=swap"
       rel="stylesheet"
     />
-    <title>Smart Canteen — Order Ahead, Skip the Queue</title>
+    <link rel="preload" href="/images/hero.webp" as="image" type="image/webp" imagesrcset="/images/hero-1200.webp 1200w, /images/hero.webp 2400w" imagesizes="100vw" fetchpriority="high" />
+    <title>Smart Canteen: Order Ahead, Skip the Queue</title>
   </head>
   <body>
     <div id="root"></div>

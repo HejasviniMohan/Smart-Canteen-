@@ -1,41 +1,51 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChefHat } from 'lucide-react'
 import { foodService } from '../services/foodService'
+import { errorMessage } from '../services/api'
+import { ErrorState, SkeletonGrid } from '../components/Feedback'
 import SpecialCard from '../components/SpecialCard'
 import FoodCard from '../components/FoodCard'
 
 export default function TodaySpecials() {
   const [foods, setFoods] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true)
+    setError(null)
     foodService.list({ available: true, todaySpecial: true })
       .then((r) => setFoods(r.data || []))
-      .catch(() => {})
+      .catch((e) => setError(errorMessage(e)))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(load, [load])
 
   return (
     <div className="menu-page">
       <div className="specials-hero">
         <h1>Today's Specials</h1>
-        <p>Hand-picked deals — limited time only</p>
+        <p>Picked by the canteen for today</p>
       </div>
 
       {loading && (
-        <div className="menu-loading"><div className="menu-loading-text">Loading today's specials...</div></div>
+        <SkeletonGrid count={4} />
       )}
 
-      {!loading && foods.length === 0 && (
+      {!loading && error && <ErrorState message={error} onRetry={load} />}
+
+      {!loading && !error && foods.length === 0 && (
         <div className="menu-empty">
-          <div className="menu-empty-icon">🔥</div>
+          <div className="menu-empty-icon" aria-hidden="true"><ChefHat size={40} strokeWidth={1.5} /></div>
           <h5>No specials today</h5>
           <p>Check back tomorrow for fresh deals!</p>
-          <Link to="/menu" className="btn brand-btn text-white mt-3">Browse Full Menu</Link>
+          <Link to="/menu" className="btn brand-btn mt-3">Browse Full Menu</Link>
         </div>
       )}
 
-      {!loading && foods.length > 0 && (
+      {!loading && !error && foods.length > 0 && (
         <>
           <div className="specials-featured">
             <SpecialCard food={foods[0]} />

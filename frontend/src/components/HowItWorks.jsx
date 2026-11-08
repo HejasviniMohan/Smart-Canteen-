@@ -1,36 +1,21 @@
-import { motion } from 'framer-motion'
-import { Search, ShoppingBag, Ticket, Coffee } from 'lucide-react'
-
+// These really are steps in order, so they are numbered.
 const STEPS = [
-  { icon: Search,       title: 'Browse Menu',    desc: 'Explore daily specials, combos, and your favourites.' },
-  { icon: ShoppingBag,  title: 'Place Order',    desc: 'Customize, add to cart, and pay securely in seconds.' },
-  { icon: Ticket,       title: 'Get Token',      desc: 'Receive a digital token + QR instantly after payment.' },
-  { icon: Coffee,       title: 'Pickup Meal',    desc: 'Show token at counter and walk out with hot food.' },
+  { title: 'Browse the menu', desc: 'See what is available today, including specials and combos.' },
+  { title: 'Pick a slot', desc: 'Choose a pickup time, then pay online or in cash at pickup.' },
+  { title: 'Track it live', desc: 'Get a token and QR code, and watch your order move through the kitchen.' },
+  { title: 'Scan and collect', desc: 'Staff scan your QR code at the counter and hand over your food.' },
 ]
 
 export default function HowItWorks() {
   return (
-    <div className="sc-how">
-      {STEPS.map((s, idx) => {
-        const Icon = s.icon
-        return (
-          <motion.div
-            key={idx}
-            className="step"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.4, delay: idx * 0.1 }}
-          >
-            <div className="circle">
-              <Icon size={28} />
-              <span className="num">{idx + 1}</span>
-            </div>
-            <h4>{s.title}</h4>
-            <p>{s.desc}</p>
-          </motion.div>
-        )
-      })}
-    </div>
+    <ol className="sc-how">
+      {STEPS.map((s, idx) => (
+        <li key={s.title} className="step">
+          <span className="step-num" aria-hidden="true">{idx + 1}</span>
+          <h3>{s.title}</h3>
+          <p>{s.desc}</p>
+        </li>
+      ))}
+    </ol>
   )
 }

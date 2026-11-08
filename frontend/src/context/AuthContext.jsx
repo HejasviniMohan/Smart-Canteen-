@@ -5,8 +5,11 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('user')
-    return raw ? JSON.parse(raw) : null
+    try {
+      return JSON.parse(localStorage.getItem('user'))
+    } catch {
+      return null
+    }
   })
   const [loading, setLoading] = useState(false)
 
@@ -22,6 +25,8 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('user')
       })
     }
+    // Restores the session once on page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const login = async (email, password) => {
@@ -52,15 +57,22 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const updateUser = (changes) => {
+    const next = { ...user, ...changes }
+    localStorage.setItem('user', JSON.stringify(next))
+    setUser(next)
+  }
+
   const logout = async () => {
-    try { await authService.logout() } catch (e) { /* ignore */ }
+    // Tokens are stateless, so logging out locally still works if this call fails.
+    await authService.logout().catch(() => {})
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )

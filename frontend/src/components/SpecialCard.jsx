@@ -1,17 +1,19 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Star, Heart, Plus, ShoppingBag, Flame } from 'lucide-react'
+import { Star, ShoppingBag, Timer } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
 import { toast } from 'react-toastify'
+import { money } from '../utils/format'
+import FoodImage from './FoodImage'
 
 export default function SpecialCard({ food }) {
   const { add } = useCart()
+  const { user } = useAuth()
   if (!food) return null
 
-  const mrp      = Number(food.price)
-  const offer    = food.specialPrice ? Number(food.specialPrice) : Math.round(mrp * 0.85)
-  const savePct  = Math.round((1 - offer / mrp) * 100)
-  const rating   = food.rating ?? food.avgRating ?? 4.6
+  const price = Number(food.effectivePrice)
+  const hasDiscount = price < Number(food.price)
+  const canOrder = !user || user.role === 'STUDENT'
 
   const handleAdd = () => {
     add(food, 1)
@@ -19,39 +21,39 @@ export default function SpecialCard({ food }) {
   }
 
   return (
-    <motion.div
-      className="sc-special"
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.5 }}
-    >
-      <div>
-        <span className="tag"><Flame size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> TODAY'S SPECIAL</span>
+    <article className="sc-special">
+      <div className="img">
+        <FoodImage food={food} placeholderClass="sc-special-placeholder" />
+      </div>
+      <div className="copy">
+        <span className="tag-special">Today's special</span>
         <h3>{food.name}</h3>
-        <p>{food.description || 'Hand-picked by our chef for today — fresh, flavorful, and at a special price for a limited time.'}</p>
+        {food.description && <p>{food.description}</p>}
         <div className="meta">
-          <span className="rating"><Star size={12} fill="#fff" /> {Number(rating).toFixed(1)}</span>
-          <span className="veg" />
-          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>{food.prepTimeMin ? `⏱ ${food.prepTimeMin} min` : '⏱ 10-15 min'}</span>
+          <span className={food.isVeg ? 'veg-mark' : 'veg-mark nonveg'} role="img" aria-label={food.isVeg ? 'Vegetarian' : 'Non-vegetarian'} />
+          {food.reviewCount > 0 && (
+            <span><Star size={14} aria-hidden="true" /> {Number(food.averageRating).toFixed(1)} from {food.reviewCount} {food.reviewCount === 1 ? 'review' : 'reviews'}</span>
+          )}
+          {food.prepTimeMin && <span><Timer size={14} aria-hidden="true" /> {food.prepTimeMin} min</span>}
         </div>
         <div className="prices">
-          <span className="new">₹{offer}</span>
-          <span className="old">₹{mrp}</span>
-          <span className="save">{savePct}% OFF</span>
+          <span className="new">{money(price)}</span>
+          {hasDiscount && (
+            <>
+              <span className="old">{money(food.price)}</span>
+              <span className="save">{Math.round((1 - price / Number(food.price)) * 100)}% off</span>
+            </>
+          )}
         </div>
         <div className="actions">
-          <button className="btn-primary-sc" onClick={handleAdd} style={{ border: 0, cursor: 'pointer' }}>
-            <ShoppingBag size={16} /> Add to Cart
-          </button>
-          <Link to="/menu" className="btn-secondary-sc">View Details</Link>
+          {canOrder && (
+            <button type="button" className="btn-primary-sc" onClick={handleAdd}>
+              <ShoppingBag size={16} /> Add to cart
+            </button>
+          )}
+          <Link to="/menu" className="btn-secondary-sc">See the full menu</Link>
         </div>
       </div>
-      <div className="img">
-        {food.imageUrl
-          ? <img src={food.imageUrl} alt={food.name} />
-          : <span>{food.isVeg ? '🥗' : '🍗'}</span>}
-      </div>
-    </motion.div>
+    </article>
   )
 }

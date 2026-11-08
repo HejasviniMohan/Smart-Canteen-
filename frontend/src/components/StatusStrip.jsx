@@ -1,54 +1,41 @@
-import { Clock, ChefHat, Store, TrendingUp } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { canteenService } from '../services/orderService'
+import { useLiveRefresh } from '../context/LiveUpdatesContext'
+import { slotLabel } from '../utils/format'
 
-const BASE = { open: true, waitMin: 5, preparing: 18, counters: 3, crowd: 'Low' }
-
+/**
+ * The canteen's live state, shown as a pickup ticket in the hero.
+ * Every number comes from the /canteen/status endpoint.
+ */
 export default function StatusStrip() {
-  const [data, setData] = useState(BASE)
+  const [status, setStatus] = useState(null)
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      setData((d) => ({
-        ...d,
-        preparing: Math.max(0, d.preparing + Math.round(Math.random() * 4 - 2)),
-        waitMin:   Math.max(2, Math.min(12, d.waitMin + Math.round(Math.random() * 2 - 1))),
-      }))
-    }, 8000)
-    return () => clearInterval(t)
+  const load = useCallback(() => {
+    // Purely informational: if it fails, the ticket just stays hidden.
+    canteenService.status().then((r) => setStatus(r.data)).catch(() => {})
   }, [])
 
+  useEffect(load, [load])
+  useLiveRefresh(load, { fallbackMs: 30000 })
+
+  if (!status) return null
+
   return (
-    <div className="container" style={{ maxWidth: 1320, margin: '0 auto', padding: '0 24px' }}>
-      <div className="sc-status">
-        <div className="item">
-          <div className="ico green"><Store size={20} /></div>
-          <div>
-            <div className="label">Canteen Status</div>
-            <div className="value"><span className="live-dot" /> Open Now</div>
+    <section className="sc-status" aria-label="Canteen right now">
+      <div className="ticket-head">
+        <div>
+          <div className="ticket-state">
+            <span className={`live-dot ${status.open ? '' : 'closed'}`} aria-hidden="true" />
+            {status.open ? 'Open now' : 'Closed'}
           </div>
-        </div>
-        <div className="item">
-          <div className="ico orange"><Clock size={20} /></div>
-          <div>
-            <div className="label">Average Wait</div>
-            <div className="value">~{data.waitMin} min</div>
-          </div>
-        </div>
-        <div className="item">
-          <div className="ico purple"><ChefHat size={20} /></div>
-          <div>
-            <div className="label">Orders Preparing</div>
-            <div className="value">{data.preparing}</div>
-          </div>
-        </div>
-        <div className="item">
-          <div className="ico amber"><TrendingUp size={20} /></div>
-          <div>
-            <div className="label">Counters Active</div>
-            <div className="value">{data.counters}</div>
-          </div>
+          <div className="ticket-sub">{status.open ? `Until ${status.closesAt}` : `Opens at ${status.opensAt}`}</div>
         </div>
       </div>
-    </div>
+      <dl>
+        <div><dt>Orders in the kitchen</dt><dd>{status.ordersInKitchen}</dd></div>
+        <div><dt>Kitchen queue</dt><dd>~{status.estimatedWaitMinutes} min</dd></div>
+        <div><dt>Next pickup slot</dt><dd>{status.nextSlot ? slotLabel(status.nextSlot) : 'None free'}</dd></div>
+      </dl>
+    </section>
   )
 }

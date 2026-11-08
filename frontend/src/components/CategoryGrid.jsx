@@ -1,39 +1,40 @@
 import { Link } from 'react-router-dom'
-import { ArrowUpRight } from 'lucide-react'
-import { motion } from 'framer-motion'
+import Reveal from './Reveal'
+import { Coffee, CookingPot, Croissant, Egg, IceCreamCone, Package, Salad, Sandwich, Soup, UtensilsCrossed, Wheat } from 'lucide-react'
 
-const ICONS = {
-  'south indian': '🍛', 'north indian': '🥘', 'chinese': '🥡',
-  'snacks': '🥪', 'beverages': '☕', 'desserts': '🍨',
-  'combos': '🍱', 'healthy': '🥗', 'rice': '🍚',
-  'breakfast': '🍳', 'default': '🍽️',
-}
+const ICONS = [
+  ['south indian', Soup], ['north indian', CookingPot], ['chinese', Wheat],
+  ['snack', Sandwich], ['beverage', Coffee], ['drink', Coffee], ['dessert', IceCreamCone],
+  ['combo', Package], ['healthy', Salad], ['salad', Salad], ['rice', Wheat],
+  ['breakfast', Egg], ['bakery', Croissant],
+]
 
-function emojiFor(name = '') {
+function iconFor(name = '') {
   const k = name.toLowerCase()
-  for (const key of Object.keys(ICONS)) if (k.includes(key)) return ICONS[key]
-  return ICONS.default
+  return ICONS.find(([key]) => k.includes(key))?.[1] || UtensilsCrossed
 }
 
-export default function CategoryGrid({ categories = [], itemsByCategory = {} }) {
+export default function CategoryGrid({ categories = [], itemsByCategory = {}, coverByCategory = {} }) {
   return (
-    <div className="sc-cat-grid">
-      {categories.map((c, idx) => (
-        <motion.div
-          key={c.id}
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.4, delay: idx * 0.04 }}
-        >
-          <Link to={`/menu/${c.id}`} className="sc-cat">
-            <div className="img-wrap">{c.imageUrl ? <img src={c.imageUrl} alt={c.name} /> : emojiFor(c.name)}</div>
-            <div className="name">{c.name}</div>
-            <div className="count">{itemsByCategory[c.id] ?? c.itemCount ?? 12}+ items</div>
-            <div className="arrow"><ArrowUpRight size={14} /></div>
+    <Reveal stagger className="sc-cat-grid">
+      {categories.map((c) => {
+        const Icon = iconFor(c.name)
+        const count = itemsByCategory[c.id] ?? 0
+        // A category's own image, or else a photo of one of its dishes.
+        const cover = c.imageUrl || coverByCategory[c.id]
+        return (
+          <Link key={c.id} to={`/menu/${c.id}`} className={`sc-cat ${cover ? 'has-cover' : ''}`}>
+            {cover && <img className="cat-cover" src={cover} alt="" loading="lazy" decoding="async" />}
+            {!cover && (
+              <span className="cat-icon" aria-hidden="true"><Icon size={20} strokeWidth={1.75} /></span>
+            )}
+            <span>
+              <span className="name d-block">{c.name}</span>
+              <span className="count">{count} {count === 1 ? 'item' : 'items'}</span>
+            </span>
           </Link>
-        </motion.div>
-      ))}
-    </div>
+        )
+      })}
+    </Reveal>
   )
 }

@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ShoppingCart, ArrowRight } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
+import { money } from '../utils/format'
 
 export default function FloatingCart() {
   const { count, total } = useCart()
@@ -21,7 +22,7 @@ export default function FloatingCart() {
       </div>
       <div className="sc-fab-divider" />
       <div className="sc-fab-right">
-        <span className="sc-fab-total">₹{total.toFixed(0)}</span>
+        <span className="sc-fab-total">{money(total)}</span>
         <ArrowRight size={15} />
       </div>
     </Link>

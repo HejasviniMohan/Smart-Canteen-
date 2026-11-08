@@ -1,90 +1,86 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCart } from '../context/CartContext'
-import { orderService, paymentService } from '../services/orderService'
 import { toast } from 'react-toastify'
-import { ShoppingBag, ArrowLeft, CreditCard, Smartphone, Wallet, Banknote } from 'lucide-react'
+import { ShoppingBag, ArrowLeft, CreditCard, Banknote } from 'lucide-react'
+import { useCart } from '../context/CartContext'
+import { canteenService, orderService } from '../services/orderService'
+import { foodService } from '../services/foodService'
+import { errorMessage } from '../services/api'
+import { syncWithMenu } from '../utils/cart'
+import { money, slotLabel } from '../utils/format'
+import { Skeleton } from '../components/Feedback'
 
 const PAYMENT_METHODS = [
-  { id: 'UPI', label: 'UPI', icon: Smartphone },
-  { id: 'CARD', label: 'Card', icon: CreditCard },
-  { id: 'WALLET', label: 'Wallet', icon: Wallet },
-  { id: 'CASH_ON_PICKUP', label: 'Cash on Pickup', icon: Banknote },
+  { id: 'ONLINE', label: 'Pay online', hint: 'UPI, card or wallet', icon: CreditCard },
+  { id: 'CASH_ON_PICKUP', label: 'Cash at pickup', hint: 'Pay when you collect', icon: Banknote },
 ]
 
+const newKey = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
 export default function Checkout() {
-  const { items, total, clear } = useCart()
+  const { items, total, clear, replace } = useCart()
   const navigate = useNavigate()
   const [notes, setNotes] = useState('')
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState(null)
-  const [paymentMethod, setPaymentMethod] = useState('UPI')
-  const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '', name: '' })
-  const [cardErrors, setCardErrors] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('ONLINE')
+  const [slots, setSlots] = useState(null)
+  const [slot, setSlot] = useState(null)
+  // The same key on every retry of this checkout, so a double-click or a retried
+  // request returns the original order rather than creating a second one.
+  const idempotencyKey = useRef(newKey())
 
-  const tax = Math.round(total * 0.05)
-  const grandTotal = total + tax
+  const loadSlots = () => canteenService.slots()
+    .then(({ data }) => {
+      setSlots(data)
+      setSlot((current) => (data.some((s) => s.start === current && s.remaining > 0)
+        ? current
+        : data.find((s) => s.remaining > 0)?.start ?? null))
+    })
+    .catch((e) => setError(errorMessage(e, 'Could not load pickup slots')))
 
-  const validateCard = () => {
-    const errs = {}
-    if (!cardDetails.name.trim()) errs.name = 'Cardholder name required'
-    if (!cardDetails.number.replace(/\s/g, '').match(/^\d{16}$/)) errs.number = 'Enter 16-digit card number'
-    if (!cardDetails.expiry.match(/^\d{2}\/\d{2}$/)) errs.expiry = 'Enter MM/YY format'
-    if (!cardDetails.cvv.match(/^\d{3,4}$/)) errs.cvv = 'Enter 3 or 4 digit CVV'
-    setCardErrors(errs)
-    return Object.keys(errs).length === 0
-  }
+  useEffect(() => {
+    loadSlots()
+    // The cart may be days old, so check it against today's menu and prices.
+    foodService.list().then(({ data }) => {
+      const result = syncWithMenu(items, data)
+      if (result.removed.length > 0) toast.warn(`No longer available: ${result.removed.join(', ')}`)
+      if (result.repriced.length > 0) toast.info(`Price updated: ${result.repriced.join(', ')}`)
+      if (result.removed.length > 0 || result.repriced.length > 0) replace(result.items)
+    }).catch(() => {
+      // The server re-checks prices when the order is placed, so nothing can be overcharged.
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handlePaymentChange = (method) => {
-    setPaymentMethod(method)
-    setError(null)
-    setCardErrors({})
-  }
-
-  const handlePlaceOrder = async () => {
-    if (items.length === 0) return
-
-    if (paymentMethod === 'CARD' && !validateCard()) {
-      return
-    }
-
+  const placeOrder = async () => {
     setError(null)
     setPlacing(true)
-
     try {
-      const orderRes = await orderService.place({
+      const { data: order } = await orderService.place({
         items: items.map((i) => ({ foodItemId: i.id, quantity: i.quantity })),
-        notes,
+        notes: notes.trim() || undefined,
         paymentMethod,
-      })
-      const order = orderRes.data
-
-      if (paymentMethod !== 'CASH_ON_PICKUP') {
-        try {
-          const payRes = await paymentService.create(order.id)
-          const rp = payRes.data
-          await paymentService.verify({
-            paymentId: rp.paymentId,
-            razorpayOrderId: rp.razorpayOrderId,
-            razorpayPaymentId: 'pay_DEMO_' + Date.now(),
-            razorpaySignature: 'demo-signature',
-          })
-        } catch (payErr) {
-          const msg = payErr.response?.data?.message || 'Payment verification failed'
-          toast.error(msg)
-          setError(msg)
-          setPlacing(false)
-          return
-        }
-      }
+        pickupSlot: slot,
+        expectedTotal: total,
+      }, idempotencyKey.current)
 
       clear()
-      toast.success(`Order ${order.tokenNumber} placed successfully!`)
-      navigate(`/orders/${order.id}`)
+      if (paymentMethod === 'ONLINE') {
+        // The order page handles payment, so a failed attempt can be retried from there.
+        navigate(`/orders/${order.id}?pay=1`, { replace: true })
+      } else {
+        toast.success(`Order ${order.tokenNumber} placed`)
+        navigate(`/orders/${order.id}`, { replace: true })
+      }
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Could not place order. Please try again.'
-      setError(msg)
-      toast.error(msg)
+      const message = errorMessage(err, 'Could not place the order. Please try again.')
+      setError(message)
+      toast.error(message)
+      if (err.response?.status === 409) {
+        // A slot may just have filled up, so show the latest availability.
+        loadSlots()
+      }
     } finally {
       setPlacing(false)
     }
@@ -96,10 +92,8 @@ export default function Checkout() {
         <div className="checkout-empty">
           <ShoppingBag size={48} style={{ color: 'var(--muted)' }} />
           <h4>Your cart is empty</h4>
-          <p>Add some delicious items from the menu first.</p>
-          <button className="btn brand-btn text-white" onClick={() => navigate('/menu')}>
-            Browse Menu
-          </button>
+          <p>Add something from the menu first.</p>
+          <button className="btn brand-btn" onClick={() => navigate('/menu')}>Browse Menu</button>
         </div>
       </div>
     )
@@ -111,7 +105,7 @@ export default function Checkout() {
         <div className="checkout-left">
           <div className="checkout-card">
             <div className="checkout-card-header">
-              <h3>Order Summary</h3>
+              <h1 className="h4 mb-0">Order Summary</h1>
               <button className="btn-text" onClick={() => navigate('/cart')}>
                 <ArrowLeft size={14} /> Edit cart
               </button>
@@ -123,32 +117,23 @@ export default function Checkout() {
                     <span className="checkout-item-name">{i.name}</span>
                     <span className="checkout-item-qty">× {i.quantity}</span>
                   </div>
-                  <span className="checkout-item-price">₹{(i.price * i.quantity).toFixed(0)}</span>
+                  <span className="checkout-item-price">{money(i.price * i.quantity)}</span>
                 </div>
               ))}
             </div>
             <div className="checkout-totals">
-              <div className="checkout-total-row">
-                <span>Subtotal</span>
-                <span>₹{total.toFixed(0)}</span>
-              </div>
-              <div className="checkout-total-row">
-                <span>Tax (5%)</span>
-                <span>₹{tax.toFixed(0)}</span>
-              </div>
               <div className="checkout-total-row checkout-grand-total">
                 <span>Total</span>
-                <span className="brand-text">₹{grandTotal.toFixed(0)}</span>
+                <span className="brand-text" data-testid="checkout-total">{money(total)}</span>
               </div>
+              <p className="checkout-demo-note">Prices include all taxes.</p>
             </div>
           </div>
 
           <div className="checkout-card">
-            <h4 className="checkout-section-title">Kitchen Notes</h4>
+            <label className="checkout-section-title" htmlFor="kitchen-notes">Kitchen Notes</label>
             <textarea
-              className="checkout-notes"
-              rows="3"
-              value={notes}
+              id="kitchen-notes" className="checkout-notes" rows="3" maxLength={500} value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="E.g. Less spicy, no onion, extra chutney..."
             />
@@ -157,102 +142,53 @@ export default function Checkout() {
 
         <div className="checkout-right">
           <div className="checkout-card">
-            <h4 className="checkout-section-title">Payment Method</h4>
-            <div className="checkout-payment-options">
-              {PAYMENT_METHODS.map(({ id, label, icon: Icon }) => (
-                <label
-                  key={id}
-                  className={`checkout-payment-option ${paymentMethod === id ? 'selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value={id}
-                    checked={paymentMethod === id}
-                    onChange={() => handlePaymentChange(id)}
-                  />
-                  <Icon size={16} />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-            {paymentMethod === 'CARD' && (
-              <div className="card-form">
-                <div className="card-field">
-                  <label>Card Number</label>
-                  <input
-                    type="text"
-                    placeholder="1234 5678 9012 3456"
-                    maxLength={19}
-                    value={cardDetails.number}
-                    onChange={(e) => setCardDetails((d) => ({ ...d, number: e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim() }))}
-                  />
-                  {cardErrors.number && <span className="card-error">{cardErrors.number}</span>}
-                </div>
-                <div className="card-row">
-                  <div className="card-field">
-                    <label>Expiry</label>
-                    <input
-                      type="text"
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      value={cardDetails.expiry}
-                      onChange={(e) => setCardDetails((d) => ({ ...d, expiry: e.target.value }))}
-                    />
-                    {cardErrors.expiry && <span className="card-error">{cardErrors.expiry}</span>}
-                  </div>
-                  <div className="card-field">
-                    <label>CVV</label>
-                    <input
-                      type="password"
-                      placeholder="•••"
-                      maxLength={4}
-                      value={cardDetails.cvv}
-                      onChange={(e) => setCardDetails((d) => ({ ...d, cvv: e.target.value.replace(/\D/g, '') }))}
-                    />
-                    {cardErrors.cvv && <span className="card-error">{cardErrors.cvv}</span>}
-                  </div>
-                </div>
-                <div className="card-field">
-                  <label>Cardholder Name</label>
-                  <input
-                    type="text"
-                    placeholder="As on card"
-                    value={cardDetails.name}
-                    onChange={(e) => setCardDetails((d) => ({ ...d, name: e.target.value }))}
-                  />
-                  {cardErrors.name && <span className="card-error">{cardErrors.name}</span>}
-                </div>
-                <p className="card-demo-note">Demo mode — no real card data is stored</p>
+            <h2 className="checkout-section-title" id="slot-heading">Pickup Time</h2>
+            {slots === null && !error && <Skeleton rows={2} height={48} />}
+            {slots !== null && slots.length === 0 && (
+              <p className="text-muted mb-0">No pickup slots are available right now. Please check back during opening hours.</p>
+            )}
+            {slots !== null && slots.length > 0 && (
+              <div className="slot-grid" role="radiogroup" aria-labelledby="slot-heading">
+                {slots.map((s) => (
+                  <button
+                    key={s.start} type="button" role="radio" aria-checked={slot === s.start}
+                    disabled={s.remaining === 0}
+                    className={`slot-option ${slot === s.start ? 'selected' : ''}`}
+                    onClick={() => setSlot(s.start)}
+                  >
+                    <span>{slotLabel(s.start)}</span>
+                    <small>{s.remaining === 0 ? 'Full' : s.remaining <= 3 ? `${s.remaining} left` : 'Available'}</small>
+                  </button>
+                ))}
               </div>
-            )}
-            {paymentMethod === 'CASH_ON_PICKUP' && (
-              <p className="checkout-demo-note" style={{ color: 'var(--green)', fontWeight: 600 }}>
-                Pay ₹{grandTotal.toFixed(0)} in cash when you pick up your order.
-              </p>
-            )}
-            {paymentMethod !== 'CASH_ON_PICKUP' && (
-              <p className="checkout-demo-note">Demo mode — payment is simulated</p>
             )}
           </div>
 
+          <div className="checkout-card">
+            <h2 className="checkout-section-title">Payment Method</h2>
+            <div className="checkout-payment-options">
+              {PAYMENT_METHODS.map(({ id, label, hint, icon: Icon }) => (
+                <label key={id} className={`checkout-payment-option ${paymentMethod === id ? 'selected' : ''}`}>
+                  <input
+                    type="radio" name="payment" value={id} checked={paymentMethod === id}
+                    onChange={() => { setPaymentMethod(id); setError(null) }}
+                  />
+                  <Icon size={16} />
+                  <span>{label}<small className="d-block text-muted">{hint}</small></span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {error && (
-            <div className="checkout-error">
+            <div className="checkout-error" role="alert">
               <strong>Error:</strong> {error}
             </div>
           )}
 
-          <button
-            className="checkout-place-btn"
-            onClick={handlePlaceOrder}
-            disabled={placing}
-          >
-            {placing ? 'Processing...' : paymentMethod === 'CASH_ON_PICKUP' ? `Confirm Order — ₹${grandTotal.toFixed(0)}` : `Pay Now — ₹${grandTotal.toFixed(0)}`}
+          <button className="checkout-place-btn" onClick={placeOrder} disabled={placing || !slot}>
+            {placing ? 'Placing order...' : paymentMethod === 'ONLINE' ? `Continue to Payment: ${money(total)}` : `Place Order: ${money(total)}`}
           </button>
-
-          <p className="checkout-terms">
-            By placing the order, you agree to the Smart Canteen terms of service.
-          </p>
         </div>
       </div>
     </div>

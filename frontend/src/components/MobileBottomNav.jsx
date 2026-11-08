@@ -1,20 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, UtensilsCrossed, Receipt, ShoppingCart, User, Bell } from 'lucide-react'
+import { Home, UtensilsCrossed, Receipt, ShoppingCart, User, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { useEffect, useState } from 'react'
-import { notificationService } from '../services/notificationService'
 
 export default function MobileBottomNav() {
   const { isAuthenticated, user } = useAuth()
   const { count } = useCart()
   const location = useLocation()
-  const [unread, setUnread] = useState(0)
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-    notificationService.mine().then((r) => setUnread((r.data || []).filter((n) => !n.isRead).length)).catch(() => {})
-  }, [isAuthenticated])
 
   const is = (p) => location.pathname === p
   const starts = (p) => location.pathname.startsWith(p)
@@ -27,13 +19,12 @@ export default function MobileBottomNav() {
         <Link to="/orders" className={starts('/orders') ? 'active' : ''}>
           <span style={{ position: 'relative' }}>
             <Receipt size={20} />
-            {unread > 0 && <span className="badge" style={{ top: -4, right: -8 }}>{unread}</span>}
           </span>
           Orders
         </Link>
-      ) : (
-        <Link to="/login"><User size={20} />Login</Link>
-      )}
+      ) : ['STAFF', 'ADMIN'].includes(user?.role) ? (
+        <Link to="/staff" className={starts('/staff') ? 'active' : ''}><ClipboardList size={20} />Staff</Link>
+      ) : null}
       {isAuthenticated && user?.role === 'STUDENT' && (
         <Link to="/cart" className={`cart-cell ${is('/cart') ? 'active' : ''}`}>
           <span style={{ position: 'relative' }}>
